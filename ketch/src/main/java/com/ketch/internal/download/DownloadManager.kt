@@ -172,6 +172,7 @@ internal class DownloadManager(
             fileName = downloadRequest.fileName,
             id = downloadRequest.id,
             headers = downloadRequest.headers,
+            notificationConfig = downloadRequest.notificationConfig,
             downloadConfig = downloadRequest.downloadConfig
         )
 

@@ -1,6 +1,7 @@
 package com.ketch.internal.download
 
 import com.ketch.DownloadConfig
+import com.ketch.NotificationConfig
 import com.ketch.Status
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.FileUtil.getUniqueId
@@ -19,4 +20,5 @@ internal data class DownloadRequest(
     var progress: Int = DownloadConst.DEFAULT_VALUE_PROGRESS,
     var speedInBytePerMs: Float = DownloadConst.DEFAULT_VALUE_SPEED,
     var downloadConfig: DownloadConfig = DownloadConfig(),
+    val notificationConfig: NotificationConfig
 )

@@ -6,9 +6,12 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.ketch.internal.download.DownloadTask
 import com.ketch.internal.network.RetrofitInstance
+import com.ketch.internal.notification.DownloadNotificationManager
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.ExceptionConst
+import com.ketch.internal.utils.NotificationHelper
 import com.ketch.internal.utils.WorkUtil
+import kotlinx.coroutines.CancellationException
 
 internal class DownloadWorker(
     private val context: Context,
@@ -16,6 +19,7 @@ internal class DownloadWorker(
 ) :
     CoroutineWorker(context, workerParameters) {
 
+    private var downloadNotificationManager: DownloadNotificationManager? = null
 
     override suspend fun doWork(): Result {
 
@@ -34,8 +38,31 @@ internal class DownloadWorker(
         val connectTimeOutInMs = workInputData.downloadConfig.connectTimeOutInMs
         val readTimeOutInMs = workInputData.downloadConfig.readTimeOutInMs
         val headers = workInputData.headers
+        val notificationEnabled = workInputData.notificationConfig.enabled
+
+        if (notificationEnabled) {
+            val notificationSmallIcon = workInputData.notificationConfig.smallIcon
+            val notificationChannelName = workInputData.notificationConfig.channelName
+            val notificationChannelDescription = workInputData.notificationConfig.channelDescription
+            val notificationImportance = workInputData.notificationConfig.importance
+            downloadNotificationManager = DownloadNotificationManager(
+                context = context,
+                notificationChannelName = notificationChannelName,
+                notificationChannelDescription = notificationChannelDescription,
+                notificationImportance = notificationImportance,
+                requestId = id,
+                notificationSmallIcon = notificationSmallIcon,
+                fileName = fileName,
+                workId = getId()
+            )
+        }
 
         return try {
+            downloadNotificationManager?.sendUpdateNotification()?.let {
+                setForeground(
+                    it
+                )
+            }
 
             val totalLength = DownloadTask(
                 url = url,
@@ -66,10 +93,28 @@ internal class DownloadWorker(
                             DownloadConst.KEY_SPEED to speed
                         )
                     )
+                    if (!NotificationHelper.isDismissedNotification(downloadNotificationManager?.getNotificationId())) {
+                        downloadNotificationManager?.sendUpdateNotification(
+                            progress = progress,
+                            speedInBPerMs = speed,
+                            length = length,
+                            update = true
+                        )?.let {
+                            setForeground(
+                                it
+                            )
+                        }
+                    }
                 }
             )
+            downloadNotificationManager?.sendDownloadSuccessNotification(totalLength)
             Result.success()
         } catch (e: Exception) {
+            if (e is CancellationException) {
+                downloadNotificationManager?.sendDownloadCancelledNotification()
+            } else {
+                downloadNotificationManager?.sendDownloadFailedNotification()
+            }
             Result.failure(
                 workDataOf(ExceptionConst.KEY_EXCEPTION to e.message)
             )
