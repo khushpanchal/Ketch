@@ -6,6 +6,7 @@ import android.os.Build
 import com.ketch.internal.download.DownloadManager
 import com.ketch.internal.download.DownloadRequest
 import com.ketch.internal.download.DownloadRequestListener
+import com.ketch.internal.utils.DownloadLogger
 import com.ketch.internal.utils.ExceptionConst
 import com.ketch.internal.utils.FileUtil
 import com.ketch.internal.utils.NotificationConst
@@ -15,6 +16,7 @@ class Ketch private constructor(
     private val context: Context,
     private val downloadConfig: DownloadConfig,
     private val notificationConfig: NotificationConfig,
+    private val logger: Logger
 ) {
 
     companion object {
@@ -22,18 +24,22 @@ class Ketch private constructor(
             context: Context,
             downloadConfig: DownloadConfig = DownloadConfig(),
             notificationConfig: NotificationConfig = NotificationConfig(smallIcon = NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON),
+            enableLogs: Boolean = false,
+            logger: Logger = DownloadLogger(enableLogs)
         ): Ketch {
 
             return Ketch(
                 context = context.applicationContext,
                 downloadConfig = downloadConfig,
                 notificationConfig = notificationConfig,
+                logger = logger
             )
         }
     }
 
     private val downloadManager = DownloadManager(
         context = context,
+        logger = logger
     )
 
     @Synchronized

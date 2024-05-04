@@ -9,6 +9,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.ketch.DownloadModel
+import com.ketch.Logger
 import com.ketch.Status
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.ExceptionConst
@@ -25,6 +26,7 @@ import java.util.UUID
 
 internal class DownloadManager(
     context: Context,
+    private val logger: Logger
 ) {
     private val _downloadItems = MutableStateFlow<List<DownloadModel>>(listOf())
     val downloadItems: StateFlow<List<DownloadModel>> = _downloadItems
@@ -93,6 +95,7 @@ internal class DownloadManager(
         if (req.status != Status.CANCELLED) {
             deleteFileIfExists(req.path, req.fileName)
             req.status = Status.CANCELLED
+            logger.log(msg = "Download Cancelled. FileName: ${req.fileName}, URL: ${req.url}")
             req.listener?.onCancel()
         }
     }
@@ -102,6 +105,7 @@ internal class DownloadManager(
         val req = idDownloadRequestMap[id] ?: return
         req.status = Status.FAILED
         val error = workInfo.outputData.getString(ExceptionConst.KEY_EXCEPTION) ?: ""
+        logger.log(msg = "Download Failed. FileName: ${req.fileName}, URL: ${req.url}, Reason: $error")
         req.listener?.onFailure(error)
     }
 
@@ -110,6 +114,7 @@ internal class DownloadManager(
         val req = idDownloadRequestMap[id] ?: return
         req.status = Status.SUCCESS
         req.progress = 100
+        logger.log(msg = "Download Success. FileName: ${req.fileName}, URL: ${req.url}")
         req.listener?.onSuccess()
     }
 
@@ -125,6 +130,7 @@ internal class DownloadManager(
                     )
                 req.status = Status.STARTED
                 req.totalLength = totalLength
+                logger.log(msg = "Download Started. FileName: ${req.fileName}, URL: ${req.url}, Size in bytes: $totalLength")
                 req.listener?.onStart(totalLength)
             }
 
@@ -146,12 +152,14 @@ internal class DownloadManager(
                 if (req.status == Status.QUEUED) { //Edge case when Progress called skipping Started
                     req.status = Status.STARTED
                     req.totalLength = totalLength
+                    logger.log(msg = "Download Started. FileName: ${req.fileName}, URL: ${req.url}, Size in bytes: $totalLength")
                     req.listener?.onStart(totalLength)
                 }
                 req.status = Status.PROGRESS
                 req.progress = progress
                 req.totalLength = totalLength
                 req.speedInBytePerMs = speed
+                logger.log(msg = "Download in Progress. FileName: ${req.fileName}, URL: ${req.url}, Size in bytes: $totalLength, downloadPercent: $progress%, downloadSpeedInBytesPerMilliSeconds: $speed b/ms")
                 req.listener?.onProgress(progress, speed)
             }
         }
@@ -161,6 +169,7 @@ internal class DownloadManager(
         val id = uuidIdMap[workInfo.id]
         val req = idDownloadRequestMap[id] ?: return
         req.status = Status.QUEUED
+        logger.log(msg = "Download Queued. FileName: ${req.fileName}, URL: ${req.url}")
         req.listener?.onQueue()
     }
 
