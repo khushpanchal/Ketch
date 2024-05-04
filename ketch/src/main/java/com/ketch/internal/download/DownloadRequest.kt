@@ -1,6 +1,7 @@
 package com.ketch.internal.download
 
 import com.ketch.DownloadConfig
+import com.ketch.Status
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.FileUtil.getUniqueId
 
@@ -11,6 +12,7 @@ internal data class DownloadRequest(
     val tag: String?,
     val id: Int = getUniqueId(url, path, fileName),
     val headers: HashMap<String, String> = hashMapOf(),
+    var status: Status = Status.DEFAULT,
     var listener: DownloadRequestListener? = null,
     var timeQueued: Long = DownloadConst.DEFAULT_VALUE_TIME_QUEUED,
     var totalLength: Long = DownloadConst.DEFAULT_VALUE_LENGTH,

@@ -6,6 +6,7 @@ import com.ketch.internal.download.DownloadRequest
 import com.ketch.internal.download.DownloadRequestListener
 import com.ketch.internal.utils.ExceptionConst
 import com.ketch.internal.utils.FileUtil
+import kotlinx.coroutines.flow.StateFlow
 
 class Ketch private constructor(
     private val context: Context,
@@ -126,6 +127,16 @@ class Ketch private constructor(
     @Synchronized
     fun cancelAll() {
         downloadManager.cancelAll()
+    }
+
+    @Synchronized
+    fun observeDownloads(): StateFlow<List<DownloadModel>> {
+        return downloadManager.downloadItems //Observe download items requested by this class instance only.
+    }
+
+    @Synchronized
+    fun stopObserving() {
+        downloadManager.stopObserving()
     }
 
 }

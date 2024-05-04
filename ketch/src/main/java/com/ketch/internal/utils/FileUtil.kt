@@ -37,4 +37,10 @@ internal object FileUtil {
         return hex.toString().hashCode()
     }
 
+    fun deleteFileIfExists(path: String, name: String) {
+        val file = File(path, name)
+        if (file.exists()) {
+            file.delete()
+        }
+    }
 }
