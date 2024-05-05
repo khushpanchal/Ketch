@@ -214,7 +214,7 @@ Check out the blog to understand working of Ketch (High Level Design): [https://
 
 ## Contribute to the project
 
-Feel free to provide feedback, report an issue, or contribute to EventKT. Head over to [GitHub repository](https://github.com/khushpanchal/Ketch), create an issue or find the pending issue. All pull requests are welcome 😄
+Feel free to provide feedback, report an issue, or contribute to Ketch. Head over to [GitHub repository](https://github.com/khushpanchal/Ketch), create an issue or find the pending issue. All pull requests are welcome 😄
 
 ## License
 
