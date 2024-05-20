@@ -1,4 +1,5 @@
 [![](https://jitpack.io/v/khushpanchal/Ketch.svg)](https://jitpack.io/#khushpanchal/Ketch)
+[![](https://androidweekly.net/issues/issue-622/badge)](https://androidweekly.net/issues/issue-622)
 
 # Ketch
 
