@@ -1,9 +1,11 @@
 package com.ketch
 
-data class Request(
-    val id: Int,
-    val url: String,
-    val path: String,
-    val fileName: String,
+import java.util.UUID
+
+interface Request {
+    val id: UUID
+    val url: String
+    val path: String
+    val fileName: String
     val tag: String?
-)
+}

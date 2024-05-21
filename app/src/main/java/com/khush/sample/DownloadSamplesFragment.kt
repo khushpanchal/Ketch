@@ -9,11 +9,15 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.content.FileProvider
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import com.ketch.DownloadState
 import com.ketch.Ketch
 import com.ketch.NotificationConfig
 import com.ketch.Request
-import com.ketch.Status
 import com.khush.sample.databinding.FragmentDownloadSamplesBinding
+import kotlinx.coroutines.launch
 import java.io.File
 
 @SuppressLint("SetTextI18n")
@@ -27,12 +31,6 @@ class DownloadSamplesFragment : Fragment() {
     private var request3: Request? = null
     private var request4: Request? = null
     private var request5: Request? = null
-
-    private var length1: Long = 0L
-    private var length2: Long = 0L
-    private var length3: Long = 0L
-    private var length4: Long = 0L
-    private var length5: Long = 0L
 
     private var length1Text: String = "0.00 b"
     private var length2Text: String = "0.00 b"
@@ -165,223 +163,323 @@ class DownloadSamplesFragment : Fragment() {
     }
 
     private fun download1() {
-        request1 = ketch.download(
+        val request = ketch.download(
             url = "https://file-examples.com/storage/fe4996602366316ffa06467/2017/04/file_example_MP4_640_3MG.mp4",
-            fileName = "Sample_Video.mp4",
-            onQueue = {
-                fragmentDownloadSamplesBinding.fileName1.text = request1?.fileName
-                fragmentDownloadSamplesBinding.status1.text = Status.QUEUED.toString()
-            },
-            onStart = { length ->
-                length1 = length
-                length1Text = Util.getTotalLengthText(length)
-                fragmentDownloadSamplesBinding.status1.text = Status.STARTED.toString()
-            },
-            onProgress = { progress, speedInBytePerMs ->
-                fragmentDownloadSamplesBinding.status1.text = Status.PROGRESS.toString()
-                fragmentDownloadSamplesBinding.progressBar1.progress = progress
-                fragmentDownloadSamplesBinding.progressText1.text = "$progress%/$length1Text, "
-                fragmentDownloadSamplesBinding.size1.text = Util.getTimeLeftText(
-                    speedInBytePerMs,
-                    progress,
-                    length1
-                ) + ", " + Util.getSpeedText(speedInBytePerMs)
-            },
-            onSuccess = {
-                fragmentDownloadSamplesBinding.status1.text = Status.SUCCESS.toString()
-                fragmentDownloadSamplesBinding.progressBar1.progress = 100
-                fragmentDownloadSamplesBinding.progressText1.text = "100%/$length1Text"
-                fragmentDownloadSamplesBinding.size1.text = ""
-                fragmentDownloadSamplesBinding.cancelButton1.text = "Open"
-            },
-            onFailure = {
-                fragmentDownloadSamplesBinding.status1.text = Status.FAILED.toString()
-                fragmentDownloadSamplesBinding.progressText1.text = it
-                fragmentDownloadSamplesBinding.size1.text = ""
-            },
-            onCancel = {
-                fragmentDownloadSamplesBinding.status1.text = Status.CANCELLED.toString()
-                fragmentDownloadSamplesBinding.progressBar1.progress = 0
-                fragmentDownloadSamplesBinding.progressText1.text = ""
-                fragmentDownloadSamplesBinding.size1.text = ""
+            fileName = "Sample_Video.mp4"
+        ).also {
+            request1 = it
+        }
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                ketch.observeDownloadById(request.id).collect {
+                    when (it) {
+                        DownloadState.Blocked -> {}
+                        DownloadState.Cancel -> {
+                            fragmentDownloadSamplesBinding.status1.text =
+                                Status.CANCELLED.toString()
+                            fragmentDownloadSamplesBinding.progressBar1.progress = 0
+                            fragmentDownloadSamplesBinding.progressText1.text = ""
+                            fragmentDownloadSamplesBinding.size1.text = ""
+                        }
+
+                        is DownloadState.Error -> {
+                            fragmentDownloadSamplesBinding.status1.text = Status.FAILED.toString()
+                            fragmentDownloadSamplesBinding.progressText1.text = it.error
+                            fragmentDownloadSamplesBinding.size1.text = ""
+                        }
+
+                        is DownloadState.Progress -> {
+                            length1Text = Util.getTotalLengthText(it.length)
+
+                            fragmentDownloadSamplesBinding.status1.text = Status.PROGRESS.toString()
+                            fragmentDownloadSamplesBinding.progressBar1.progress = it.progress
+                            fragmentDownloadSamplesBinding.progressText1.text =
+                                "${it.progress}%/$length1Text, "
+                            fragmentDownloadSamplesBinding.size1.text = Util.getTimeLeftText(
+                                it.speedInBytePerMs,
+                                it.progress,
+                                it.length
+                            ) + ", " + Util.getSpeedText(it.speedInBytePerMs)
+                        }
+
+                        DownloadState.Queued -> {
+                            fragmentDownloadSamplesBinding.fileName1.text = request1?.fileName
+                            fragmentDownloadSamplesBinding.status1.text = Status.QUEUED.toString()
+                        }
+
+                        is DownloadState.Started -> {
+                            length1Text = Util.getTotalLengthText(it.length)
+                            fragmentDownloadSamplesBinding.status1.text = Status.STARTED.toString()
+                        }
+
+                        DownloadState.Success -> {
+                            fragmentDownloadSamplesBinding.status1.text = Status.SUCCESS.toString()
+                            fragmentDownloadSamplesBinding.progressBar1.progress = 100
+                            fragmentDownloadSamplesBinding.progressText1.text = "100%/$length1Text"
+                            fragmentDownloadSamplesBinding.size1.text = ""
+                            fragmentDownloadSamplesBinding.cancelButton1.text = "Open"
+                        }
+                    }
+                }
             }
-        )
+        }
     }
 
     private fun download2() {
-        request2 = ketch.download(
+        val request = ketch.download(
             url = "https://file-examples.com/storage/fe4996602366316ffa06467/2017/11/file_example_MP3_700KB.mp3",
-            fileName = "Sample_Audio.mp3",
-            onQueue = {
-                fragmentDownloadSamplesBinding.fileName2.text = request2?.fileName
-                fragmentDownloadSamplesBinding.status2.text = Status.QUEUED.toString()
-            },
-            onStart = { length ->
-                length2 = length
-                length2Text = Util.getTotalLengthText(length)
-                fragmentDownloadSamplesBinding.status2.text = Status.STARTED.toString()
-            },
-            onProgress = { progress, speedInBytePerMs ->
-                fragmentDownloadSamplesBinding.status2.text = Status.PROGRESS.toString()
-                fragmentDownloadSamplesBinding.progressBar2.progress = progress
-                fragmentDownloadSamplesBinding.progressText2.text = "$progress%/$length2Text, "
-                fragmentDownloadSamplesBinding.size2.text = Util.getTimeLeftText(
-                    speedInBytePerMs,
-                    progress,
-                    length2
-                ) + ", " + Util.getSpeedText(speedInBytePerMs)
-            },
-            onSuccess = {
-                fragmentDownloadSamplesBinding.status2.text = Status.SUCCESS.toString()
-                fragmentDownloadSamplesBinding.progressBar2.progress = 100
-                fragmentDownloadSamplesBinding.progressText2.text = "100%/$length2Text"
-                fragmentDownloadSamplesBinding.size2.text = ""
-                fragmentDownloadSamplesBinding.cancelButton2.text = "Open"
-            },
-            onFailure = {
-                fragmentDownloadSamplesBinding.status2.text = Status.FAILED.toString()
-                fragmentDownloadSamplesBinding.progressText2.text = it
-                fragmentDownloadSamplesBinding.size2.text = ""
-            },
-            onCancel = {
-                fragmentDownloadSamplesBinding.status2.text = Status.CANCELLED.toString()
-                fragmentDownloadSamplesBinding.progressBar2.progress = 0
-                fragmentDownloadSamplesBinding.progressText2.text = ""
-                fragmentDownloadSamplesBinding.size2.text = ""
+            fileName = "Sample_Audio.mp3"
+        ).also {
+            request2 = it
+        }
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                ketch.observeDownloadById(request.id).collect {
+                    when (it) {
+                        DownloadState.Blocked -> {}
+                        DownloadState.Cancel -> {
+                            fragmentDownloadSamplesBinding.status2.text =
+                                Status.CANCELLED.toString()
+                            fragmentDownloadSamplesBinding.progressBar2.progress = 0
+                            fragmentDownloadSamplesBinding.progressText2.text = ""
+                            fragmentDownloadSamplesBinding.size2.text = ""
+                        }
+
+                        is DownloadState.Error -> {
+                            fragmentDownloadSamplesBinding.status2.text = Status.FAILED.toString()
+                            fragmentDownloadSamplesBinding.progressText2.text = it.error
+                            fragmentDownloadSamplesBinding.size2.text = ""
+                        }
+
+                        is DownloadState.Progress -> {
+                            length2Text = Util.getTotalLengthText(it.length)
+
+                            fragmentDownloadSamplesBinding.status2.text = Status.PROGRESS.toString()
+                            fragmentDownloadSamplesBinding.progressBar2.progress = it.progress
+                            fragmentDownloadSamplesBinding.progressText2.text =
+                                "${it.progress}%/$length2Text, "
+                            fragmentDownloadSamplesBinding.size2.text = Util.getTimeLeftText(
+                                it.speedInBytePerMs,
+                                it.progress,
+                                it.length
+                            ) + ", " + Util.getSpeedText(it.speedInBytePerMs)
+                        }
+
+                        DownloadState.Queued -> {
+                            fragmentDownloadSamplesBinding.fileName2.text = request2?.fileName
+                            fragmentDownloadSamplesBinding.status2.text = Status.QUEUED.toString()
+                        }
+
+                        is DownloadState.Started -> {
+                            length2Text = Util.getTotalLengthText(it.length)
+                            fragmentDownloadSamplesBinding.status2.text = Status.STARTED.toString()
+                        }
+
+                        DownloadState.Success -> {
+                            fragmentDownloadSamplesBinding.status2.text = Status.SUCCESS.toString()
+                            fragmentDownloadSamplesBinding.progressBar2.progress = 100
+                            fragmentDownloadSamplesBinding.progressText2.text = "100%/$length2Text"
+                            fragmentDownloadSamplesBinding.size2.text = ""
+                            fragmentDownloadSamplesBinding.cancelButton2.text = "Open"
+                        }
+                    }
+                }
             }
-        )
+        }
     }
 
     private fun download3() {
-        request3 = ketch.download(
+        val request = ketch.download(
             url = "https://file-examples.com/storage/fe4996602366316ffa06467/2017/10/file-sample_150kB.pdf",
-            fileName = "Sample_Doc.pdf",
-            onQueue = {
-                fragmentDownloadSamplesBinding.fileName3.text = request3?.fileName
-                fragmentDownloadSamplesBinding.status3.text = Status.QUEUED.toString()
-            },
-            onStart = { length ->
-                length3 = length
-                length3Text = Util.getTotalLengthText(length)
-                fragmentDownloadSamplesBinding.status3.text = Status.STARTED.toString()
-            },
-            onProgress = { progress, speedInBytePerMs ->
-                fragmentDownloadSamplesBinding.status3.text = Status.PROGRESS.toString()
-                fragmentDownloadSamplesBinding.progressBar3.progress = progress
-                fragmentDownloadSamplesBinding.progressText3.text = "$progress%/$length3Text, "
-                fragmentDownloadSamplesBinding.size3.text = Util.getTimeLeftText(
-                    speedInBytePerMs,
-                    progress,
-                    length3
-                ) + ", " + Util.getSpeedText(speedInBytePerMs)
-            },
-            onSuccess = {
-                fragmentDownloadSamplesBinding.status3.text = Status.SUCCESS.toString()
-                fragmentDownloadSamplesBinding.progressBar3.progress = 100
-                fragmentDownloadSamplesBinding.progressText3.text = "100%/$length3Text"
-                fragmentDownloadSamplesBinding.size3.text = ""
-                fragmentDownloadSamplesBinding.cancelButton3.text = "Open"
-            },
-            onFailure = {
-                fragmentDownloadSamplesBinding.status3.text = Status.FAILED.toString()
-                fragmentDownloadSamplesBinding.progressText3.text = it
-                fragmentDownloadSamplesBinding.size3.text = ""
-            },
-            onCancel = {
-                fragmentDownloadSamplesBinding.status3.text = Status.CANCELLED.toString()
-                fragmentDownloadSamplesBinding.progressBar3.progress = 0
-                fragmentDownloadSamplesBinding.progressText3.text = ""
-                fragmentDownloadSamplesBinding.size3.text = ""
+            fileName = "Sample_Doc.pdf"
+        ).also {
+            request3 = it
+        }
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                ketch.observeDownloadById(request.id).collect {
+                    when (it) {
+                        DownloadState.Blocked -> {}
+                        DownloadState.Cancel -> {
+                            fragmentDownloadSamplesBinding.status3.text =
+                                Status.CANCELLED.toString()
+                            fragmentDownloadSamplesBinding.progressBar3.progress = 0
+                            fragmentDownloadSamplesBinding.progressText3.text = ""
+                            fragmentDownloadSamplesBinding.size3.text = ""
+                        }
+
+                        is DownloadState.Error -> {
+                            fragmentDownloadSamplesBinding.status3.text = Status.FAILED.toString()
+                            fragmentDownloadSamplesBinding.progressText3.text = it.error
+                            fragmentDownloadSamplesBinding.size3.text = ""
+                        }
+
+                        is DownloadState.Progress -> {
+                            length3Text = Util.getTotalLengthText(it.length)
+
+                            fragmentDownloadSamplesBinding.status3.text = Status.PROGRESS.toString()
+                            fragmentDownloadSamplesBinding.progressBar3.progress = it.progress
+                            fragmentDownloadSamplesBinding.progressText3.text =
+                                "${it.progress}%/$length3Text, "
+                            fragmentDownloadSamplesBinding.size3.text = Util.getTimeLeftText(
+                                it.speedInBytePerMs,
+                                it.progress,
+                                it.length
+                            ) + ", " + Util.getSpeedText(it.speedInBytePerMs)
+                        }
+
+                        DownloadState.Queued -> {
+                            fragmentDownloadSamplesBinding.fileName3.text = request3?.fileName
+                            fragmentDownloadSamplesBinding.status3.text = Status.QUEUED.toString()
+                        }
+
+                        is DownloadState.Started -> {
+                            length3Text = Util.getTotalLengthText(it.length)
+                            fragmentDownloadSamplesBinding.status3.text = Status.STARTED.toString()
+                        }
+
+                        DownloadState.Success -> {
+                            fragmentDownloadSamplesBinding.status3.text = Status.SUCCESS.toString()
+                            fragmentDownloadSamplesBinding.progressBar3.progress = 100
+                            fragmentDownloadSamplesBinding.progressText3.text = "100%/$length3Text"
+                            fragmentDownloadSamplesBinding.size3.text = ""
+                            fragmentDownloadSamplesBinding.cancelButton3.text = "Open"
+                        }
+                    }
+                }
             }
-        )
+        }
     }
 
     private fun download4() {
-        request4 = ketch.download(
+        val request = ketch.download(
             url = "https://file-examples.com/storage/fe4996602366316ffa06467/2017/10/file_example_JPG_100kB.jpg",
-            fileName = "Sample_Image.jpg",
-            onQueue = {
-                fragmentDownloadSamplesBinding.fileName4.text = request4?.fileName
-                fragmentDownloadSamplesBinding.status4.text = Status.QUEUED.toString()
-            },
-            onStart = { length ->
-                length4 = length
-                length4Text = Util.getTotalLengthText(length)
-                fragmentDownloadSamplesBinding.status4.text = Status.STARTED.toString()
-            },
-            onProgress = { progress, speedInBytePerMs ->
-                fragmentDownloadSamplesBinding.status4.text = Status.PROGRESS.toString()
-                fragmentDownloadSamplesBinding.progressBar4.progress = progress
-                fragmentDownloadSamplesBinding.progressText4.text = "$progress%/$length4Text, "
-                fragmentDownloadSamplesBinding.size4.text = Util.getTimeLeftText(
-                    speedInBytePerMs,
-                    progress,
-                    length4
-                ) + ", " + Util.getSpeedText(speedInBytePerMs)
-            },
-            onSuccess = {
-                fragmentDownloadSamplesBinding.status4.text = Status.SUCCESS.toString()
-                fragmentDownloadSamplesBinding.progressBar4.progress = 100
-                fragmentDownloadSamplesBinding.progressText4.text = "100%/$length4Text"
-                fragmentDownloadSamplesBinding.size4.text = ""
-                fragmentDownloadSamplesBinding.cancelButton4.text = "Open"
-            },
-            onFailure = {
-                fragmentDownloadSamplesBinding.status4.text = Status.FAILED.toString()
-                fragmentDownloadSamplesBinding.progressText4.text = it
-                fragmentDownloadSamplesBinding.size4.text = ""
-            },
-            onCancel = {
-                fragmentDownloadSamplesBinding.status4.text = Status.CANCELLED.toString()
-                fragmentDownloadSamplesBinding.progressBar4.progress = 0
-                fragmentDownloadSamplesBinding.progressText4.text = ""
-                fragmentDownloadSamplesBinding.size4.text = ""
+            fileName = "Sample_Image.jpg"
+        ).also {
+            request4 = it
+        }
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                ketch.observeDownloadById(request.id).collect {
+                    when (it) {
+                        DownloadState.Blocked -> {}
+                        DownloadState.Cancel -> {
+                            fragmentDownloadSamplesBinding.status4.text =
+                                Status.CANCELLED.toString()
+                            fragmentDownloadSamplesBinding.progressBar4.progress = 0
+                            fragmentDownloadSamplesBinding.progressText4.text = ""
+                            fragmentDownloadSamplesBinding.size4.text = ""
+                        }
+
+                        is DownloadState.Error -> {
+                            fragmentDownloadSamplesBinding.status4.text = Status.FAILED.toString()
+                            fragmentDownloadSamplesBinding.progressText4.text = it.error
+                            fragmentDownloadSamplesBinding.size4.text = ""
+                        }
+
+                        is DownloadState.Progress -> {
+                            length4Text = Util.getTotalLengthText(it.length)
+
+                            fragmentDownloadSamplesBinding.status4.text = Status.PROGRESS.toString()
+                            fragmentDownloadSamplesBinding.progressBar4.progress = it.progress
+                            fragmentDownloadSamplesBinding.progressText4.text =
+                                "${it.progress}%/$length4Text, "
+                            fragmentDownloadSamplesBinding.size4.text = Util.getTimeLeftText(
+                                it.speedInBytePerMs,
+                                it.progress,
+                                it.length
+                            ) + ", " + Util.getSpeedText(it.speedInBytePerMs)
+                        }
+
+                        DownloadState.Queued -> {
+                            fragmentDownloadSamplesBinding.fileName4.text = request4?.fileName
+                            fragmentDownloadSamplesBinding.status4.text = Status.QUEUED.toString()
+                        }
+
+                        is DownloadState.Started -> {
+                            length4Text = Util.getTotalLengthText(it.length)
+                            fragmentDownloadSamplesBinding.status4.text = Status.STARTED.toString()
+                        }
+
+                        DownloadState.Success -> {
+                            fragmentDownloadSamplesBinding.status4.text = Status.SUCCESS.toString()
+                            fragmentDownloadSamplesBinding.progressBar4.progress = 100
+                            fragmentDownloadSamplesBinding.progressText4.text = "100%/$length4Text"
+                            fragmentDownloadSamplesBinding.size4.text = ""
+                            fragmentDownloadSamplesBinding.cancelButton4.text = "Open"
+                        }
+                    }
+                }
             }
-        )
+        }
     }
 
     private fun download5() {
-        request5 = ketch.download(
+        val request = ketch.download(
             url = "https://file-examples.com/storage/fe4996602366316ffa06467/2017/10/file_example_GIF_500kB.gif",
-            fileName = "Sample_Gif.gif",
-            onQueue = {
-                fragmentDownloadSamplesBinding.fileName5.text = request5?.fileName
-                fragmentDownloadSamplesBinding.status5.text = Status.QUEUED.toString()
-            },
-            onStart = { length ->
-                length5 = length
-                length5Text = Util.getTotalLengthText(length)
-                fragmentDownloadSamplesBinding.status5.text = Status.STARTED.toString()
-            },
-            onProgress = { progress, speedInBytePerMs ->
-                fragmentDownloadSamplesBinding.status5.text = Status.PROGRESS.toString()
-                fragmentDownloadSamplesBinding.progressBar5.progress = progress
-                fragmentDownloadSamplesBinding.progressText5.text = "$progress%/$length5Text, "
-                fragmentDownloadSamplesBinding.size5.text = Util.getTimeLeftText(
-                    speedInBytePerMs,
-                    progress,
-                    length5
-                ) + ", " + Util.getSpeedText(speedInBytePerMs)
-            },
-            onSuccess = {
-                fragmentDownloadSamplesBinding.status5.text = Status.SUCCESS.toString()
-                fragmentDownloadSamplesBinding.progressBar5.progress = 100
-                fragmentDownloadSamplesBinding.progressText5.text = "100%/$length5Text"
-                fragmentDownloadSamplesBinding.size5.text = ""
-                fragmentDownloadSamplesBinding.cancelButton5.text = "Open"
-            },
-            onFailure = {
-                fragmentDownloadSamplesBinding.status5.text = Status.FAILED.toString()
-                fragmentDownloadSamplesBinding.progressText5.text = it
-                fragmentDownloadSamplesBinding.size5.text = ""
-            },
-            onCancel = {
-                fragmentDownloadSamplesBinding.status5.text = Status.CANCELLED.toString()
-                fragmentDownloadSamplesBinding.progressBar5.progress = 0
-                fragmentDownloadSamplesBinding.progressText5.text = ""
-                fragmentDownloadSamplesBinding.size5.text = ""
+            fileName = "Sample_Gif.gif"
+        ).also {
+            request5 = it
+        }
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                ketch.observeDownloadById(request.id).collect {
+                    when (it) {
+                        DownloadState.Blocked -> {}
+                        DownloadState.Cancel -> {
+                            fragmentDownloadSamplesBinding.status5.text =
+                                Status.CANCELLED.toString()
+                            fragmentDownloadSamplesBinding.progressBar5.progress = 0
+                            fragmentDownloadSamplesBinding.progressText5.text = ""
+                            fragmentDownloadSamplesBinding.size5.text = ""
+                        }
+
+                        is DownloadState.Error -> {
+                            fragmentDownloadSamplesBinding.status5.text = Status.FAILED.toString()
+                            fragmentDownloadSamplesBinding.progressText5.text = it.error
+                            fragmentDownloadSamplesBinding.size5.text = ""
+                        }
+
+                        is DownloadState.Progress -> {
+                            length5Text = Util.getTotalLengthText(it.length)
+
+                            fragmentDownloadSamplesBinding.status5.text = Status.PROGRESS.toString()
+                            fragmentDownloadSamplesBinding.progressBar5.progress = it.progress
+                            fragmentDownloadSamplesBinding.progressText5.text =
+                                "${it.progress}%/$length5Text, "
+                            fragmentDownloadSamplesBinding.size5.text = Util.getTimeLeftText(
+                                it.speedInBytePerMs,
+                                it.progress,
+                                it.length
+                            ) + ", " + Util.getSpeedText(it.speedInBytePerMs)
+                        }
+
+                        DownloadState.Queued -> {
+                            fragmentDownloadSamplesBinding.fileName5.text = request5?.fileName
+                            fragmentDownloadSamplesBinding.status5.text = Status.QUEUED.toString()
+                        }
+
+                        is DownloadState.Started -> {
+                            length5Text = Util.getTotalLengthText(it.length)
+                            fragmentDownloadSamplesBinding.status5.text = Status.STARTED.toString()
+                        }
+
+                        DownloadState.Success -> {
+                            fragmentDownloadSamplesBinding.status5.text = Status.SUCCESS.toString()
+                            fragmentDownloadSamplesBinding.progressBar5.progress = 100
+                            fragmentDownloadSamplesBinding.progressText5.text = "100%/$length5Text"
+                            fragmentDownloadSamplesBinding.size5.text = ""
+                            fragmentDownloadSamplesBinding.cancelButton5.text = "Open"
+                        }
+                    }
+                }
             }
-        )
+        }
     }
 
     private fun openFile(context: Context?, path: String, fileName: String) {

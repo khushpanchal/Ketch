@@ -10,8 +10,8 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.khush.sample.databinding.ActivityMainBinding
 import com.google.android.material.snackbar.Snackbar
+import com.khush.sample.databinding.ActivityMainBinding
 
 
 class MainActivity : AppCompatActivity() {

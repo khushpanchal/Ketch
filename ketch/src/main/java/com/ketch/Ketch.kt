@@ -5,13 +5,14 @@ import android.content.Context
 import android.os.Build
 import com.ketch.internal.download.DownloadManager
 import com.ketch.internal.download.DownloadRequest
-import com.ketch.internal.download.DownloadRequestListener
 import com.ketch.internal.utils.DownloadLogger
 import com.ketch.internal.utils.ExceptionConst
 import com.ketch.internal.utils.FileUtil
 import com.ketch.internal.utils.NotificationConst
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
+import java.util.UUID
 
+@Suppress("unused")
 class Ketch private constructor(
     private val context: Context,
     private val downloadConfig: DownloadConfig,
@@ -42,19 +43,12 @@ class Ketch private constructor(
         logger = logger
     )
 
-    @Synchronized
     fun download(
         url: String,
         path: String = FileUtil.getDefaultDownloadPath(),
         fileName: String = FileUtil.getFileNameFromUrl(url),
         tag: String? = null,
-        headers: HashMap<String, String> = hashMapOf(),
-        onQueue: () -> Unit = {},
-        onStart: (length: Long) -> Unit = {},
-        onProgress: (progress: Int, speedInBytePerMs: Float) -> Unit = { _, _ -> },
-        onSuccess: () -> Unit = {},
-        onFailure: (error: String) -> Unit = {},
-        onCancel: () -> Unit = {}
+        headers: HashMap<String, String> = hashMapOf()
     ): Request {
 
         if (url.isEmpty() || path.isEmpty() || fileName.isEmpty()) {
@@ -70,95 +64,34 @@ class Ketch private constructor(
             }
         }
 
-        val downloadRequest = DownloadRequest(
+        return DownloadRequest(
+            id = UUID.randomUUID(),
             url = url,
             path = path,
             fileName = fileName,
             tag = tag,
             headers = headers,
-            notificationConfig = notificationConfig
-        )
-        return download(
-            downloadRequest = downloadRequest,
-            onQueue = onQueue,
-            onStart = onStart,
-            onProgress = onProgress,
-            onSuccess = onSuccess,
-            onFailure = onFailure,
-            onCancel = onCancel
-        )
-    }
-
-    private fun download(
-        downloadRequest: DownloadRequest,
-        onQueue: () -> Unit = {},
-        onStart: (length: Long) -> Unit = {},
-        onProgress: (progress: Int, speedInBytePerMs: Float) -> Unit = { _, _ -> },
-        onSuccess: () -> Unit = {},
-        onFailure: (error: String) -> Unit = {},
-        onCancel: () -> Unit = {}
-    ): Request {
-        val listener = object : DownloadRequestListener {
-            override fun onQueue() {
-                onQueue.invoke()
-            }
-
-            override fun onStart(length: Long) {
-                onStart.invoke(length)
-            }
-
-            override fun onProgress(progress: Int, speedInBytePerMs: Float) {
-                onProgress.invoke(progress, speedInBytePerMs)
-            }
-
-            override fun onSuccess() {
-                onSuccess.invoke()
-            }
-
-            override fun onFailure(error: String) {
-                onFailure.invoke(error)
-            }
-
-            override fun onCancel() {
-                onCancel.invoke()
-            }
+            notificationConfig = notificationConfig,
+            downloadConfig = downloadConfig
+        ).also {
+            downloadManager.download(it)
         }
-        downloadRequest.listener = listener
-        downloadRequest.downloadConfig = downloadConfig
-        downloadRequest.timeQueued = System.currentTimeMillis()
-        downloadManager.download(downloadRequest)
-        return Request(
-            id = downloadRequest.id,
-            url = downloadRequest.url,
-            path = downloadRequest.path,
-            fileName = downloadRequest.fileName,
-            tag = downloadRequest.tag
-        )
     }
 
-    @Synchronized
-    fun cancel(id: Int) {
+    fun cancel(id: UUID) {
         downloadManager.cancel(id)
     }
 
-    @Synchronized
     fun cancel(tag: String) {
         downloadManager.cancel(tag)
     }
 
-    @Synchronized
     fun cancelAll() {
         downloadManager.cancelAll()
     }
 
-    @Synchronized
-    fun observeDownloads(): StateFlow<List<DownloadModel>> {
-        return downloadManager.downloadItems //Observe download items requested by this class instance only.
-    }
-
-    @Synchronized
-    fun stopObserving() {
-        downloadManager.stopObserving()
+    fun observeDownloadById(id: UUID): Flow<DownloadState> {
+        return downloadManager.getFlowForId(id)
     }
 
 }

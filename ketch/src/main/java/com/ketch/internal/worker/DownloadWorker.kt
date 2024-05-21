@@ -11,6 +11,7 @@ import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.ExceptionConst
 import com.ketch.internal.utils.NotificationHelper
 import com.ketch.internal.utils.WorkUtil
+import com.ketch.internal.utils.toUniqueId
 import kotlinx.coroutines.CancellationException
 
 internal class DownloadWorker(
@@ -31,7 +32,7 @@ internal class DownloadWorker(
                     )
             )
 
-        val id = workInputData.id
+        val id = workInputData.id.toUniqueId()
         val url = workInputData.url
         val dirPath = workInputData.path
         val fileName = workInputData.fileName
