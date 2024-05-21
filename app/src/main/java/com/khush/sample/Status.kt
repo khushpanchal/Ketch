@@ -1,4 +1,4 @@
-package com.ketch
+package com.khush.sample
 
 enum class Status {
 
@@ -12,5 +12,7 @@ enum class Status {
 
     CANCELLED,
 
-    FAILED
+    FAILED,
+
+    DEFAULT
 }

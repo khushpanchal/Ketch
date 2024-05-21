@@ -18,12 +18,13 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
+import com.ketch.DownloadState
 import com.ketch.Ketch
-import com.ketch.DownloadModel
 import com.ketch.NotificationConfig
-import com.ketch.Status
 import com.khush.sample.databinding.FragmentMainBinding
 import com.khush.sample.databinding.ItemFileBinding
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -35,6 +36,7 @@ class MainFragment : Fragment() {
 
     private lateinit var ketch: Ketch
 
+    private val downloads = MutableStateFlow<List<DownloadModel>>(emptyList())
 
     companion object {
         fun newInstance(): MainFragment {
@@ -122,7 +124,80 @@ class MainFragment : Fragment() {
             } else if (fileName.isEmpty()) {
                 Toast.makeText(this.context, "Enter Valid File name", Toast.LENGTH_SHORT).show()
             } else {
-                ketch.download(url = url, fileName = fileName)
+                val request = ketch.download(url = url, fileName = fileName)
+
+                downloads.update { downloads ->
+                    val newDownload = DownloadModel(
+                        url = request.url,
+                        path = request.path,
+                        fileName = request.fileName,
+                        tag = request.tag,
+                        id = request.id,
+                        status = Status.DEFAULT,
+                        timeQueued = System.currentTimeMillis(),
+                        progress = 0,
+                        total = 0L,
+                        speedInBytePerMs = 0f
+                    )
+
+                    downloads + newDownload
+                }
+
+                lifecycleScope.launch {
+                    repeatOnLifecycle(Lifecycle.State.STARTED) {
+                        ketch.observeDownloadById(request.id).collect { state ->
+                            downloads.update { downloads ->
+                                val mutableDownloads = downloads.toMutableList()
+                                val index = mutableDownloads.indexOfFirst { it.id == request.id }
+
+                                if (index == -1) {
+                                    return@update mutableDownloads
+                                }
+
+                                val oldDownload = mutableDownloads[index]
+
+                                val newDownload = when (state) {
+                                    DownloadState.Blocked -> oldDownload
+                                    DownloadState.Cancel -> {
+                                        oldDownload.copy(status = Status.CANCELLED)
+                                    }
+
+                                    is DownloadState.Error -> {
+                                        oldDownload.copy(status = Status.FAILED)
+                                    }
+
+                                    is DownloadState.Progress -> {
+                                        oldDownload.copy(
+                                            status = Status.PROGRESS,
+                                            total = state.length,
+                                            speedInBytePerMs = state.speedInBytePerMs,
+                                            progress = state.progress
+                                        )
+                                    }
+
+                                    DownloadState.Queued -> {
+                                        oldDownload.copy(status = Status.QUEUED)
+                                    }
+
+                                    is DownloadState.Started -> {
+                                        oldDownload.copy(
+                                            status = Status.STARTED,
+                                            total = state.length
+                                        )
+                                    }
+
+                                    DownloadState.Success -> {
+                                        oldDownload.copy(status = Status.SUCCESS)
+                                    }
+                                }
+
+                                mutableDownloads[index] = newDownload
+
+                                mutableDownloads
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -130,10 +205,9 @@ class MainFragment : Fragment() {
     private fun observer() {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                ketch.observeDownloads()
-                    .collect {//observe from viewModel to survive configuration change
-                        adapter.submitList(it)
-                    }
+                downloads.collect {//observe from viewModel to survive configuration change
+                    adapter.submitList(it)
+                }
             }
         }
     }
