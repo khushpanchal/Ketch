@@ -7,7 +7,6 @@ internal object DownloadConst {
     const val TAG_DOWNLOAD = "downloads"
     const val KEY_FILE_NAME = "key_fileName"
     const val KEY_ID = "key_id"
-    const val DEFAULT_VALUE_ID = -1
     const val KEY_STATE = "key_state"
     const val KEY_PROGRESS = "key_progress"
     const val DEFAULT_VALUE_PROGRESS = 0
@@ -18,7 +17,7 @@ internal object DownloadConst {
     const val DEFAULT_VALUE_LENGTH = 0L
     const val KEY_SPEED = "key_speed"
     const val DEFAULT_VALUE_SPEED = 0F
-    const val DEFAULT_VALUE_TIME_QUEUED = 0L
     const val KEY_REQUEST_ID = "key_request_id"
     const val KEY_WORK_INPUT_DATA = "key_work_input_data"
+    const val REQUEST_NOT_FOUND = "There is no download with this ID"
 }

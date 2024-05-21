@@ -12,7 +12,5 @@ enum class Status {
 
     CANCELLED,
 
-    FAILED,
-
-    DEFAULT
+    FAILED
 }
