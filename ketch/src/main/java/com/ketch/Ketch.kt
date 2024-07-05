@@ -47,14 +47,15 @@ class Ketch private constructor(
         url: String,
         path: String = FileUtil.getDefaultDownloadPath(),
         fileName: String = FileUtil.getFileNameFromUrl(url),
-        tag: String? = null,
+        tag: String = "",
         headers: HashMap<String, String> = hashMapOf(),
         onQueue: () -> Unit = {},
         onStart: (length: Long) -> Unit = {},
         onProgress: (progress: Int, speedInBytePerMs: Float) -> Unit = { _, _ -> },
         onSuccess: () -> Unit = {},
         onFailure: (error: String) -> Unit = {},
-        onCancel: () -> Unit = {}
+        onCancel: () -> Unit = {},
+        onPause: ()-> Unit = {}
     ): Request {
 
         if (url.isEmpty() || path.isEmpty() || fileName.isEmpty()) {
@@ -85,7 +86,8 @@ class Ketch private constructor(
             onProgress = onProgress,
             onSuccess = onSuccess,
             onFailure = onFailure,
-            onCancel = onCancel
+            onCancel = onCancel,
+            onPause = onPause
         )
     }
 
@@ -96,7 +98,8 @@ class Ketch private constructor(
         onProgress: (progress: Int, speedInBytePerMs: Float) -> Unit = { _, _ -> },
         onSuccess: () -> Unit = {},
         onFailure: (error: String) -> Unit = {},
-        onCancel: () -> Unit = {}
+        onCancel: () -> Unit = {},
+        onPause: () -> Unit = {}
     ): Request {
         val listener = object : DownloadRequestListener {
             override fun onQueue() {
@@ -121,6 +124,10 @@ class Ketch private constructor(
 
             override fun onCancel() {
                 onCancel.invoke()
+            }
+
+            override fun onPause() {
+                onPause.invoke()
             }
         }
         downloadRequest.listener = listener
@@ -161,4 +168,41 @@ class Ketch private constructor(
         downloadManager.stopObserving()
     }
 
+    @Synchronized
+    fun pause(id: Int) {
+        downloadManager.pause(id)
+    }
+
+    @Synchronized
+    fun pause(tag: String) {
+        downloadManager.pause(tag)
+    }
+
+    @Synchronized
+    fun pauseAll() {
+        downloadManager.pauseAll()
+    }
+
+    @Synchronized
+    fun resume(id: Int) {
+        downloadManager.resume(id)
+    }
+
+    @Synchronized
+    fun resume(tag: String) {
+        downloadManager.resume(tag)
+    }
+
+    @Synchronized
+    fun resumeAll() {
+        downloadManager.resumeAll()
+    }
+
+    fun clearAllDb() {
+
+    }
+
+    fun clearDb(id: Int) {
+
+    }
 }

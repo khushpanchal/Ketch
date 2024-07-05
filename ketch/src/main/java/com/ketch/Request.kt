@@ -5,5 +5,5 @@ data class Request(
     val url: String,
     val path: String,
     val fileName: String,
-    val tag: String?
+    val tag: String
 )

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.ketch.internal.database.DatabaseInstance
 import com.ketch.internal.download.DownloadTask
 import com.ketch.internal.network.RetrofitInstance
 import com.ketch.internal.notification.DownloadNotificationManager
@@ -12,10 +13,11 @@ import com.ketch.internal.utils.ExceptionConst
 import com.ketch.internal.utils.NotificationHelper
 import com.ketch.internal.utils.WorkUtil
 import kotlinx.coroutines.CancellationException
+import java.net.HttpURLConnection
 
 internal class DownloadWorker(
     private val context: Context,
-    workerParameters: WorkerParameters
+    private val workerParameters: WorkerParameters
 ) :
     CoroutineWorker(context, workerParameters) {
 
@@ -38,6 +40,8 @@ internal class DownloadWorker(
         val connectTimeOutInMs = workInputData.downloadConfig.connectTimeOutInMs
         val readTimeOutInMs = workInputData.downloadConfig.readTimeOutInMs
         val headers = workInputData.headers
+        val timeQueued = workInputData.timeQueued
+        val tag = workInputData.tag
         val notificationEnabled = workInputData.notificationConfig.enabled
 
         if (notificationEnabled) {
@@ -65,13 +69,18 @@ internal class DownloadWorker(
             }
 
             val totalLength = DownloadTask(
+                id = id,
                 url = url,
                 path = dirPath,
                 fileName = fileName,
                 downloadService = RetrofitInstance.getDownloadService(
                     connectTimeOutInMs,
                     readTimeOutInMs
-                )
+                ),
+                dbHelper = DatabaseInstance.getDbHelper(context),
+                uuid = workerParameters.id.toString(),
+                timeQueue = timeQueued,
+                tag = tag
             ).download(
                 headers = headers,
                 onStart = {
@@ -111,7 +120,7 @@ internal class DownloadWorker(
             Result.success()
         } catch (e: Exception) {
             if (e is CancellationException) {
-                downloadNotificationManager?.sendDownloadCancelledNotification()
+//                downloadNotificationManager?.sendDownloadCancelledNotification()
             } else {
                 downloadNotificationManager?.sendDownloadFailedNotification()
             }

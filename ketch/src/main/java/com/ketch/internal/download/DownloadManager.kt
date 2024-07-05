@@ -8,21 +8,27 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.ketch.DownloadConfig
 import com.ketch.DownloadModel
 import com.ketch.Logger
+import com.ketch.NotificationConfig
 import com.ketch.Status
+import com.ketch.internal.database.DatabaseInstance
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.ExceptionConst
 import com.ketch.internal.utils.FileUtil.deleteFileIfExists
 import com.ketch.internal.utils.WorkUtil.toJson
 import com.ketch.internal.worker.DownloadWorker
 import com.ketch.internal.worker.WorkInputData
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 
 internal class DownloadManager(
     context: Context,
@@ -34,10 +40,16 @@ internal class DownloadManager(
     private val workManager = WorkManager.getInstance(context.applicationContext)
     private val scope = MainScope()
 
+    private val dbHelper = DatabaseInstance.getDbHelper(context)
+
     private val idDownloadRequestMap: HashMap<Int, DownloadRequest> = hashMapOf()
     private val uuidIdMap: HashMap<UUID, Int> = hashMapOf()
 
     init {
+        scope.launch(Dispatchers.IO) {
+
+        }
+
         scope.launch {
             workManager.getWorkInfosByTagFlow(DownloadConst.TAG_DOWNLOAD).collect { workInfos ->
                 for (workInfo in workInfos) {
@@ -86,12 +98,41 @@ internal class DownloadManager(
                 }
                 _downloadItems.emit(downloadModelList)
             }
+            //Load DB to memory
+            val entities = dbHelper.getAllEntity()
+            if(entities.isNotEmpty()) {
+                entities.forEach { entity ->
+                    idDownloadRequestMap[entity.id] = DownloadRequest(
+                        url = entity.url,
+                        path = entity.path,
+                        fileName = entity.fileName,
+                        tag = entity.tag,
+                        id = entity.id,
+                        headers = hashMapOf(), //todo
+                        status = Status.entries.find { it.name == entity.status } ?: Status.DEFAULT,
+                        listener = null,
+                        timeQueued = entity.timeQueued,
+                        totalLength = entity.totalBytes,
+                        progress = 0,
+                        speedInBytePerMs = 0f,
+                        downloadConfig = DownloadConfig(), //todo
+                        notificationConfig = NotificationConfig(smallIcon = 0) //todo
+                    )
+
+                    uuidIdMap[UUID.fromString(entity.uuid)] = entity.id
+                }
+            }
         }
     }
 
     private fun workCancelled(workInfo: WorkInfo) {
         val id = uuidIdMap[workInfo.id]
         val req = idDownloadRequestMap[id] ?: return
+        if(req.status == Status.PAUSED) {
+            logger.log(msg = "Download Paused. FileName: ${req.fileName}, URL: ${req.url}")
+            req.listener?.onPause()
+            return
+        }
         if (req.status != Status.CANCELLED) {
             deleteFileIfExists(req.path, req.fileName)
             req.status = Status.CANCELLED
@@ -182,6 +223,8 @@ internal class DownloadManager(
             id = downloadRequest.id,
             headers = downloadRequest.headers,
             notificationConfig = downloadRequest.notificationConfig,
+            timeQueued = downloadRequest.timeQueued,
+            tag = downloadRequest.tag,
             downloadConfig = downloadRequest.downloadConfig
         )
 
@@ -236,6 +279,35 @@ internal class DownloadManager(
 
     fun stopObserving() {
         scope.cancel()
+    }
+
+    fun pause(id: Int) {
+        val req = idDownloadRequestMap[id] ?: return
+        if (req.status != Status.CANCELLED && req.status != Status.PAUSED) {
+            req.status = Status.PAUSED
+            workManager.cancelUniqueWork(id.toString())
+        }
+    }
+
+    fun pause(tag: String) {
+
+    }
+
+    fun pauseAll() {
+
+    }
+
+    fun resume(id: Int) {
+        val req = idDownloadRequestMap[id] ?: return
+        download(req)
+    }
+
+    fun resume(tag: String) {
+
+    }
+
+    fun resumeAll() {
+
     }
 
 }

@@ -1,33 +1,70 @@
 package com.ketch.internal.download
 
+import com.ketch.internal.database.DbHelper
+import com.ketch.internal.database.DownloadEntity
 import com.ketch.internal.network.DownloadService
-import com.ketch.internal.utils.FileUtil.deleteFileIfExists
+import kotlinx.coroutines.delay
+import java.io.BufferedOutputStream
 import java.io.File
+import java.io.FileOutputStream
+import java.io.RandomAccessFile
 
 internal class DownloadTask(
-    private val url: String,
-    private val path: String,
-    private val fileName: String,
-    private val downloadService: DownloadService
+    private val id: Int,
+    private var url: String,
+    private var path: String,
+    private var fileName: String,
+    private val uuid: String,
+    private val timeQueue: Long,
+    private val tag: String,
+    private val downloadService: DownloadService,
+    private val dbHelper: DbHelper
 ) {
 
     suspend fun download(
-        headers: Map<String, String> = mapOf(),
+        headers: MutableMap<String, String> = mutableMapOf(),
         onStart: suspend (Long) -> Unit,
         onProgress: suspend (Int, Long, Float) -> Unit
     ): Long {
-        val responseBody = downloadService.getUrl(url, headers)
-        deleteFileIfExists(path, fileName)
+
+        var rangeStart = 0L
+        val file = File(path, fileName)
+
         val destinationFile = File(path, fileName)
+
+//        val randomAccessFile = RandomAccessFile(file, "rw")
+//        val out = BufferedOutputStream(FileOutputStream(randomAccessFile.fd))
+        val out = FileOutputStream(destinationFile, true)
+        if(file.exists()) {
+            rangeStart = file.length()
+        }
+
+        if(rangeStart != 0L) {
+            headers["Range"] = "bytes=${rangeStart}-"
+//            randomAccessFile.seek(rangeStart)
+        }
+
+        val responseBody = downloadService.getUrl(url, headers)
+//        deleteFileIfExists(path, fileName)
+
         var totalBytes: Long
 
         responseBody.byteStream().use { inputStream ->
-            destinationFile.outputStream().use { outputStream ->
-                totalBytes = responseBody.contentLength()
+            out.use { outputStream ->
+                var progressBytes = 0L
+                totalBytes = responseBody.contentLength() + rangeStart
+
+                if(rangeStart != 0L) {
+                    progressBytes = rangeStart
+                }
+
+                if(dbHelper.find(id) == null) {
+                    dbHelper.insert(DownloadEntity(id, url, path, fileName, totalBytes, progressBytes, uuid = uuid, timeQueued = timeQueue, tag = tag))
+                }
+
                 onStart.invoke(totalBytes)
 
                 val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                var progressBytes = 0L
                 var bytes = inputStream.read(buffer)
                 var tempBytes = 0L
                 var progressInvokeTime = System.currentTimeMillis()
@@ -39,7 +76,7 @@ internal class DownloadTask(
                     progressBytes += bytes
                     tempBytes += bytes
                     bytes = inputStream.read(buffer)
-
+                    delay(50)
                     val finalTime = System.currentTimeMillis()
 
                     if (finalTime - progressInvokeTime >= 500) {
@@ -52,6 +89,7 @@ internal class DownloadTask(
                             totalBytes,
                             speed
                         )
+//                        dbHelper.updateProgress(id, randomAccessFile.length(), System.currentTimeMillis())
 
                     }
                 }

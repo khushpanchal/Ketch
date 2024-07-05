@@ -9,6 +9,8 @@ internal data class WorkInputData(
     val fileName: String,
     val id: Int,
     val headers: HashMap<String, String>,
+    val timeQueued: Long,
+    val tag: String,
     var downloadConfig: DownloadConfig,
     val notificationConfig: NotificationConfig
 )

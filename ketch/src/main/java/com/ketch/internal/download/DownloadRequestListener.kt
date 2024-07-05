@@ -7,4 +7,5 @@ internal interface DownloadRequestListener {
     fun onSuccess()
     fun onFailure(error: String)
     fun onCancel()
+    fun onPause()
 }
