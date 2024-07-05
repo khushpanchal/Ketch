@@ -43,8 +43,4 @@ object Util {
 
         return "%.2f %s".format(value, units[unitIndex])
     }
-
-    fun doNothing() {
-
-    }
 }
