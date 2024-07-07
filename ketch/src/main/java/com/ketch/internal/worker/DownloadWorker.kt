@@ -4,7 +4,9 @@ import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.ketch.Status
 import com.ketch.internal.database.DatabaseInstance
+import com.ketch.internal.database.DownloadEntity
 import com.ketch.internal.download.DownloadTask
 import com.ketch.internal.network.RetrofitInstance
 import com.ketch.internal.notification.DownloadNotificationManager
@@ -13,7 +15,6 @@ import com.ketch.internal.utils.ExceptionConst
 import com.ketch.internal.utils.NotificationHelper
 import com.ketch.internal.utils.WorkUtil
 import kotlinx.coroutines.CancellationException
-import java.net.HttpURLConnection
 
 internal class DownloadWorker(
     private val context: Context,
@@ -22,6 +23,7 @@ internal class DownloadWorker(
     CoroutineWorker(context, workerParameters) {
 
     private var downloadNotificationManager: DownloadNotificationManager? = null
+    private val dbHelper = DatabaseInstance.getDbHelper(context)
 
     override suspend fun doWork(): Result {
 
@@ -69,21 +71,26 @@ internal class DownloadWorker(
             }
 
             val totalLength = DownloadTask(
-                id = id,
                 url = url,
                 path = dirPath,
                 fileName = fileName,
                 downloadService = RetrofitInstance.getDownloadService(
                     connectTimeOutInMs,
                     readTimeOutInMs
-                ),
-                dbHelper = DatabaseInstance.getDbHelper(context),
-                uuid = workerParameters.id.toString(),
-                timeQueue = timeQueued,
-                tag = tag
+                )
             ).download(
                 headers = headers,
                 onStart = {
+                    if(dbHelper.find(id) == null) {
+                        dbHelper.insert(
+                            DownloadEntity(
+                                id, url, dirPath, fileName, it, 0,
+                                uuid = workerParameters.id.toString(), timeQueued = timeQueued, tag = tag,
+                                headersJson = WorkUtil.hashMapToJson(headers)
+                            )
+                        )
+                    }
+
                     setProgressAsync(
                         workDataOf(
                             DownloadConst.KEY_STATE to DownloadConst.STARTED,
@@ -93,6 +100,10 @@ internal class DownloadWorker(
                     )
                 },
                 onProgress = { progress, length, speed ->
+                    // todo Update DB every few kb
+                    dbHelper.updateStatus(id, Status.PROGRESS.toString(), System.currentTimeMillis())
+                    dbHelper.updateProgress(id, (length*progress)/100, System.currentTimeMillis())
+
                     setProgressAsync(
                         workDataOf(
                             DownloadConst.KEY_STATE to DownloadConst.PROGRESS,
@@ -120,8 +131,12 @@ internal class DownloadWorker(
             Result.success()
         } catch (e: Exception) {
             if (e is CancellationException) {
+                //todo UPDATE DB: check if possible
+                //todo: issue-> on pause also it is updated to cancelled.
+                dbHelper.updateStatus(id, Status.CANCELLED.toString(), System.currentTimeMillis())
 //                downloadNotificationManager?.sendDownloadCancelledNotification()
             } else {
+                dbHelper.updateStatus(id, Status.FAILED.toString(), System.currentTimeMillis())
                 downloadNotificationManager?.sendDownloadFailedNotification()
             }
             Result.failure(

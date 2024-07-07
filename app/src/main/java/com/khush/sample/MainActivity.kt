@@ -69,12 +69,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun openTestFragment() {
         //Test Download samples
-        supportFragmentManager.beginTransaction()
-            .replace(R.id.container, DownloadSamplesFragment.newInstance()).commit()
+//        supportFragmentManager.beginTransaction()
+//            .replace(R.id.container, DownloadSamplesFragment.newInstance()).commit()
 
         //Test with your own url
-//        supportFragmentManager.beginTransaction()
-//            .replace(R.id.container, MainFragment.newInstance()).commit()
+        supportFragmentManager.beginTransaction()
+            .replace(R.id.container, MainFragment.newInstance()).commit()
     }
 
     override fun onRequestPermissionsResult(

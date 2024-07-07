@@ -3,6 +3,7 @@ package com.khush.sample
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
+import android.os.Environment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -26,6 +27,7 @@ import com.khush.sample.databinding.FragmentMainBinding
 import com.khush.sample.databinding.ItemFileBinding
 import kotlinx.coroutines.launch
 import java.io.File
+import java.util.UUID
 
 
 class MainFragment : Fragment() {
@@ -101,6 +103,26 @@ class MainFragment : Fragment() {
             override fun onCancelClick(downloadItem: DownloadModel) {
                 ketch.cancel(downloadItem.id)
             }
+
+            override fun onDownloadClick(downloadItem: DownloadModel) {
+                ketch.download(
+                    url = downloadItem.url,
+                    fileName = downloadItem.fileName,
+                    tag = downloadItem.tag
+                )
+            }
+
+            override fun onPauseClick(downloadItem: DownloadModel) {
+                ketch.pause(downloadItem.id)
+            }
+
+            override fun onResumeClick(downloadItem: DownloadModel) {
+                ketch.resume(downloadItem.id)
+            }
+
+            override fun onRetryClick(downloadItem: DownloadModel) {
+                ketch.retry(downloadItem.id)
+            }
         })
         fragmentMainBinding.recyclerView.adapter = adapter
         (fragmentMainBinding.recyclerView.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations =
@@ -125,6 +147,24 @@ class MainFragment : Fragment() {
                 ketch.download(url = url, fileName = fileName)
             }
         }
+
+        val testList = listOf(DownloadModel(
+            url = "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_30mb.mp4",
+            path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+            fileName = "Sample_Video.mp4",
+            tag = "my downloads",
+            id = -1,
+            status = Status.DEFAULT,
+            timeQueued = 0L,
+            progress = 0,
+            total = 0L,
+            speedInBytePerMs = 0f,
+            headers = hashMapOf(),
+            uuid = UUID.randomUUID()
+        ))
+
+        adapter.submitList(testList)
+
     }
 
     private fun observer() {
@@ -132,7 +172,9 @@ class MainFragment : Fragment() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 ketch.observeDownloads()
                     .collect {//observe from viewModel to survive configuration change
-                        adapter.submitList(it)
+                        if(it.isNotEmpty()) {
+                            adapter.submitList(it)
+                        }
                     }
             }
         }
@@ -169,15 +211,20 @@ class FilesAdapter(private val listener: FileClickListener) :
                 downloadModel.total
             ) + ", " + Util.getSpeedText(downloadModel.speedInBytePerMs)
 
-
-            if (downloadModel.status != Status.SUCCESS) {
-                binding.cancelButton.visibility = View.VISIBLE
-            } else {
-                binding.cancelButton.visibility = View.GONE
+            binding.downloadButton.setOnClickListener {
+                listener.onDownloadClick(downloadModel)
             }
-
             binding.cancelButton.setOnClickListener {
                 listener.onCancelClick(downloadModel)
+            }
+            binding.pauseButton.setOnClickListener {
+                listener.onPauseClick(downloadModel)
+            }
+            binding.resumeButton.setOnClickListener {
+                listener.onResumeClick(downloadModel)
+            }
+            binding.retryButton.setOnClickListener {
+                listener.onRetryClick(downloadModel)
             }
             binding.root.setOnClickListener {
                 listener.onFileClick(downloadModel)
@@ -199,6 +246,10 @@ class FilesAdapter(private val listener: FileClickListener) :
     interface FileClickListener {
         fun onFileClick(downloadItem: DownloadModel)
         fun onCancelClick(downloadItem: DownloadModel)
+        fun onDownloadClick(downloadItem: DownloadModel)
+        fun onPauseClick(downloadItem: DownloadModel)
+        fun onResumeClick(downloadItem: DownloadModel)
+        fun onRetryClick(downloadItem: DownloadModel)
     }
 
 }

@@ -19,12 +19,21 @@
         app:layout_constraintTop_toTopOf="parent"
         tools:text="FileName" />
 
+    <TextView
+        android:id="@+id/status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:text="PROGRESS" />
+
     <ProgressBar
         android:id="@+id/progressBar"
         style="@style/Widget.AppCompat.ProgressBar.Horizontal"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="10dp"
         android:progress="0"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/file_name" />
@@ -33,7 +42,7 @@
         android:id="@+id/progress_text"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="10dp"
         android:textSize="15sp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/progressBar"
@@ -44,30 +53,69 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="5dp"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="10dp"
         android:text=""
         android:textSize="15sp"
         app:layout_constraintStart_toEndOf="@id/progress_text"
         app:layout_constraintTop_toBottomOf="@id/progressBar" />
 
-    <TextView
-        android:id="@+id/status"
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/download_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="Download"
         android:textSize="12sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:text="PROGRESS" />
+        app:cornerRadius="10dp"
+        app:layout_constraintTop_toBottomOf="@id/progressBar"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/pause_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="Pause"
+        android:textSize="12sp"
+        app:cornerRadius="10dp"
+        app:layout_constraintEnd_toStartOf="@id/resume_button"
+        app:layout_constraintTop_toBottomOf="@id/download_button"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/resume_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="Resume"
+        android:textSize="12sp"
+        app:cornerRadius="10dp"
+        app:layout_constraintTop_toBottomOf="@id/download_button"
+        app:layout_constraintStart_toEndOf="@id/pause_button"
+        app:layout_constraintEnd_toStartOf="@id/retry_button"/>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/retry_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="Retry"
+        android:textSize="12sp"
+        app:cornerRadius="10dp"
+        app:layout_constraintTop_toBottomOf="@id/download_button"
+        app:layout_constraintStart_toEndOf="@id/resume_button"
+        app:layout_constraintEnd_toStartOf="@id/cancel_button"/>
 
     <com.google.android.material.button.MaterialButton
         android:id="@+id/cancel_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="10dp"
         android:text="Cancel"
         android:textSize="12sp"
         app:cornerRadius="10dp"
-        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toEndOf="@id/retry_button"
+        app:layout_constraintTop_toBottomOf="@id/download_button"
         app:layout_constraintEnd_toEndOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

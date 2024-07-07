@@ -1,5 +1,7 @@
 package com.ketch
 
+import java.util.UUID
+
 data class DownloadModel(
     val url: String,
     val path: String,
@@ -10,5 +12,7 @@ data class DownloadModel(
     val timeQueued: Long,
     val progress: Int,
     val total: Long,
-    val speedInBytePerMs: Float
+    val speedInBytePerMs: Float,
+    val headers: HashMap<String, String>,
+    val uuid: UUID
 )

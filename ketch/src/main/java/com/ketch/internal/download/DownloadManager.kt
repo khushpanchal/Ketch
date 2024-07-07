@@ -13,43 +13,39 @@ import com.ketch.DownloadModel
 import com.ketch.Logger
 import com.ketch.NotificationConfig
 import com.ketch.Status
-import com.ketch.internal.database.DatabaseInstance
+import com.ketch.internal.database.DbHelper
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.ExceptionConst
 import com.ketch.internal.utils.FileUtil.deleteFileIfExists
+import com.ketch.internal.utils.WorkUtil
 import com.ketch.internal.utils.WorkUtil.toJson
 import com.ketch.internal.worker.DownloadWorker
 import com.ketch.internal.worker.WorkInputData
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.util.UUID
-import java.util.concurrent.TimeUnit
 
 internal class DownloadManager(
     context: Context,
-    private val logger: Logger
+    private val logger: Logger,
+    private val downloadConfig: DownloadConfig,
+    private val notificationConfig: NotificationConfig,
+    private val dbHelper: DbHelper,
+    private val workManager: WorkManager
 ) {
     private val _downloadItems = MutableStateFlow<List<DownloadModel>>(listOf())
     val downloadItems: StateFlow<List<DownloadModel>> = _downloadItems
 
-    private val workManager = WorkManager.getInstance(context.applicationContext)
-    private val scope = MainScope()
-
-    private val dbHelper = DatabaseInstance.getDbHelper(context)
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private val idDownloadRequestMap: HashMap<Int, DownloadRequest> = hashMapOf()
-    private val uuidIdMap: HashMap<UUID, Int> = hashMapOf()
 
     init {
-        scope.launch(Dispatchers.IO) {
-
-        }
-
         scope.launch {
             workManager.getWorkInfosByTagFlow(DownloadConst.TAG_DOWNLOAD).collect { workInfos ->
                 for (workInfo in workInfos) {
@@ -89,7 +85,9 @@ internal class DownloadManager(
                         timeQueued = it.timeQueued,
                         progress = it.progress,
                         total = it.totalLength,
-                        speedInBytePerMs = it.speedInBytePerMs
+                        speedInBytePerMs = it.speedInBytePerMs,
+                        headers = it.headers,
+                        uuid = it.uuid
                     )
                     downloadModelList.add(downloadModel)
                 }
@@ -98,6 +96,9 @@ internal class DownloadManager(
                 }
                 _downloadItems.emit(downloadModelList)
             }
+        }
+
+        scope.launch {
             //Load DB to memory
             val entities = dbHelper.getAllEntity()
             if(entities.isNotEmpty()) {
@@ -108,25 +109,20 @@ internal class DownloadManager(
                         fileName = entity.fileName,
                         tag = entity.tag,
                         id = entity.id,
-                        headers = hashMapOf(), //todo
+                        headers = WorkUtil.jsonToHashMap(entity.headersJson),
                         status = Status.entries.find { it.name == entity.status } ?: Status.DEFAULT,
-                        listener = null,
                         timeQueued = entity.timeQueued,
                         totalLength = entity.totalBytes,
-                        progress = 0,
-                        speedInBytePerMs = 0f,
-                        downloadConfig = DownloadConfig(), //todo
-                        notificationConfig = NotificationConfig(smallIcon = 0) //todo
+                        progress = ((entity.downloadedBytes * 100)/entity.totalBytes).toInt(),
+                        uuid = UUID.fromString(entity.uuid)
                     )
-
-                    uuidIdMap[UUID.fromString(entity.uuid)] = entity.id
                 }
             }
         }
     }
 
     private fun workCancelled(workInfo: WorkInfo) {
-        val id = uuidIdMap[workInfo.id]
+        val id = findIdFromUUID(workInfo.id) ?: return
         val req = idDownloadRequestMap[id] ?: return
         if(req.status == Status.PAUSED) {
             logger.log(msg = "Download Paused. FileName: ${req.fileName}, URL: ${req.url}")
@@ -142,7 +138,7 @@ internal class DownloadManager(
     }
 
     private fun workFailed(workInfo: WorkInfo) {
-        val id = uuidIdMap[workInfo.id]
+        val id = findIdFromUUID(workInfo.id) ?: return
         val req = idDownloadRequestMap[id] ?: return
         req.status = Status.FAILED
         val error = workInfo.outputData.getString(ExceptionConst.KEY_EXCEPTION) ?: ""
@@ -151,7 +147,7 @@ internal class DownloadManager(
     }
 
     private fun workSucceeded(workInfo: WorkInfo) {
-        val id = uuidIdMap[workInfo.id]
+        val id = findIdFromUUID(workInfo.id) ?: return
         val req = idDownloadRequestMap[id] ?: return
         req.status = Status.SUCCESS
         req.progress = 100
@@ -201,13 +197,13 @@ internal class DownloadManager(
                 req.totalLength = totalLength
                 req.speedInBytePerMs = speed
                 logger.log(msg = "Download in Progress. FileName: ${req.fileName}, URL: ${req.url}, Size in bytes: $totalLength, downloadPercent: $progress%, downloadSpeedInBytesPerMilliSeconds: $speed b/ms")
-                req.listener?.onProgress(progress, speed)
+                req.listener?.onProgress(totalLength, progress, speed)
             }
         }
     }
 
     private fun workEnqueued(workInfo: WorkInfo) {
-        val id = uuidIdMap[workInfo.id]
+        val id = findIdFromUUID(workInfo.id) ?: return
         val req = idDownloadRequestMap[id] ?: return
         req.status = Status.QUEUED
         logger.log(msg = "Download Queued. FileName: ${req.fileName}, URL: ${req.url}")
@@ -222,10 +218,10 @@ internal class DownloadManager(
             fileName = downloadRequest.fileName,
             id = downloadRequest.id,
             headers = downloadRequest.headers,
-            notificationConfig = downloadRequest.notificationConfig,
+            notificationConfig = notificationConfig,
             timeQueued = downloadRequest.timeQueued,
             tag = downloadRequest.tag,
-            downloadConfig = downloadRequest.downloadConfig
+            downloadConfig = downloadConfig
         )
 
         val inputDataBuilder = Data.Builder()
@@ -244,8 +240,8 @@ internal class DownloadManager(
             .setConstraints(constraints)
             .build()
 
+        downloadRequest.uuid = downloadWorkRequest.id
         idDownloadRequestMap[downloadRequest.id] = downloadRequest
-        uuidIdMap[downloadWorkRequest.id] = downloadRequest.id
 
         workManager.enqueueUniqueWork(
             downloadRequest.id.toString(), ExistingWorkPolicy.KEEP,
@@ -274,7 +270,6 @@ internal class DownloadManager(
         idDownloadRequestMap.forEach {
             cancel(it.key)
         }
-        scope.cancel()
     }
 
     fun stopObserving() {
@@ -290,24 +285,81 @@ internal class DownloadManager(
     }
 
     fun pause(tag: String) {
+        val list = idDownloadRequestMap.values.filter {
+            it.tag == tag
+        }
 
+        for (req in list) {
+            pause(req.id)
+        }
     }
 
     fun pauseAll() {
-
+        idDownloadRequestMap.forEach {
+            pause(it.key)
+        }
     }
 
     fun resume(id: Int) {
         val req = idDownloadRequestMap[id] ?: return
-        download(req)
+        if(req.status == Status.PAUSED || req.status == Status.CANCELLED) { //todo check
+            download(req)
+        }
+    }
+
+    fun retry(id: Int) {
+        val req = idDownloadRequestMap[id] ?: return
+        if(req.status == Status.FAILED) {
+            download(req)
+        }
     }
 
     fun resume(tag: String) {
+        val list = idDownloadRequestMap.values.filter {
+            it.tag == tag
+        }
 
+        for (req in list) {
+            resume(req.id)
+        }
     }
 
     fun resumeAll() {
+        idDownloadRequestMap.forEach {
+            resume(it.key)
+        }
+    }
 
+    fun clearAllDb() {
+        scope.launch {
+            dbHelper.empty()
+            idDownloadRequestMap.clear()
+        }
+    }
+
+    fun clearDb(timeInMillis: Long) {
+        scope.launch {
+            dbHelper.getEntityTillTime(timeInMillis).forEach {
+                dbHelper.remove(it.id)
+                idDownloadRequestMap.remove(it.id)
+            }
+        }
+    }
+
+    fun clearDb(id: Int) {
+        scope.launch {
+            dbHelper.remove(id)
+            idDownloadRequestMap.remove(id)
+        }
+    }
+
+    private fun findIdFromUUID(uuid: UUID): Int? {
+        idDownloadRequestMap.values.forEach {
+            if(it.uuid == uuid) {
+                return it.id
+            }
+        }
+        return null
     }
 
 }

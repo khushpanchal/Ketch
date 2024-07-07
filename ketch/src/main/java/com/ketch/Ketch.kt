@@ -3,6 +3,8 @@ package com.ketch
 import android.app.NotificationManager
 import android.content.Context
 import android.os.Build
+import androidx.work.WorkManager
+import com.ketch.internal.database.DatabaseInstance
 import com.ketch.internal.download.DownloadManager
 import com.ketch.internal.download.DownloadRequest
 import com.ketch.internal.download.DownloadRequestListener
@@ -39,7 +41,11 @@ class Ketch private constructor(
 
     private val downloadManager = DownloadManager(
         context = context,
-        logger = logger
+        logger = logger,
+        downloadConfig = downloadConfig,
+        notificationConfig = notificationConfig,
+        dbHelper = DatabaseInstance.getDbHelper(context),
+        workManager = WorkManager.getInstance(context.applicationContext)
     )
 
     @Synchronized
@@ -51,12 +57,12 @@ class Ketch private constructor(
         headers: HashMap<String, String> = hashMapOf(),
         onQueue: () -> Unit = {},
         onStart: (length: Long) -> Unit = {},
-        onProgress: (progress: Int, speedInBytePerMs: Float) -> Unit = { _, _ -> },
+        onProgress: (length: Long, progress: Int, speedInBytePerMs: Float) -> Unit = { _, _, _ -> },
         onSuccess: () -> Unit = {},
         onFailure: (error: String) -> Unit = {},
         onCancel: () -> Unit = {},
         onPause: ()-> Unit = {}
-    ): Request {
+    ): Int {
 
         if (url.isEmpty() || path.isEmpty() || fileName.isEmpty()) {
             throw RuntimeException(ExceptionConst.EXCEPTION_PARAM_MISSING)
@@ -76,32 +82,10 @@ class Ketch private constructor(
             path = path,
             fileName = fileName,
             tag = tag,
-            headers = headers,
-            notificationConfig = notificationConfig
+            headers = headers
         )
-        return download(
-            downloadRequest = downloadRequest,
-            onQueue = onQueue,
-            onStart = onStart,
-            onProgress = onProgress,
-            onSuccess = onSuccess,
-            onFailure = onFailure,
-            onCancel = onCancel,
-            onPause = onPause
-        )
-    }
 
-    private fun download(
-        downloadRequest: DownloadRequest,
-        onQueue: () -> Unit = {},
-        onStart: (length: Long) -> Unit = {},
-        onProgress: (progress: Int, speedInBytePerMs: Float) -> Unit = { _, _ -> },
-        onSuccess: () -> Unit = {},
-        onFailure: (error: String) -> Unit = {},
-        onCancel: () -> Unit = {},
-        onPause: () -> Unit = {}
-    ): Request {
-        val listener = object : DownloadRequestListener {
+        val downloadRequestListener = object : DownloadRequestListener {
             override fun onQueue() {
                 onQueue.invoke()
             }
@@ -110,8 +94,8 @@ class Ketch private constructor(
                 onStart.invoke(length)
             }
 
-            override fun onProgress(progress: Int, speedInBytePerMs: Float) {
-                onProgress.invoke(progress, speedInBytePerMs)
+            override fun onProgress(length: Long, progress: Int, speedInBytePerMs: Float) {
+                onProgress.invoke(length, progress, speedInBytePerMs)
             }
 
             override fun onSuccess() {
@@ -129,18 +113,12 @@ class Ketch private constructor(
             override fun onPause() {
                 onPause.invoke()
             }
+
         }
-        downloadRequest.listener = listener
-        downloadRequest.downloadConfig = downloadConfig
-        downloadRequest.timeQueued = System.currentTimeMillis()
+
+        downloadRequest.listener = downloadRequestListener
         downloadManager.download(downloadRequest)
-        return Request(
-            id = downloadRequest.id,
-            url = downloadRequest.url,
-            path = downloadRequest.path,
-            fileName = downloadRequest.fileName,
-            tag = downloadRequest.tag
-        )
+        return downloadRequest.id
     }
 
     @Synchronized
@@ -198,11 +176,24 @@ class Ketch private constructor(
         downloadManager.resumeAll()
     }
 
+    @Synchronized
+    fun retry(id: Int) {
+        downloadManager.retry(id)
+    }
+
+    @Synchronized
     fun clearAllDb() {
-
+        downloadManager.clearAllDb()
     }
 
+    @Synchronized
+    fun clearDb(timeInMillis: Long) {
+        downloadManager.clearDb(timeInMillis)
+    }
+
+    @Synchronized
     fun clearDb(id: Int) {
-
+        downloadManager.clearDb(id)
     }
+
 }

@@ -1,5 +1,7 @@
 package com.ketch.internal.database
 
+import com.ketch.Status
+
 data class DownloadEntity (
     var id: Int = 0,
     var url: String = "",
@@ -9,10 +11,9 @@ data class DownloadEntity (
     var downloadedBytes: Long = 0,
     var eTag: String = "",
     var uuid: String = "",
-    var status: String = "Default",
+    var status: String = Status.DEFAULT.toString(),
     var timeQueued: Long = 0,
     var lastModified: Long = 0,
-    var headersJson: String = "random",
-    var configsJson: String = "random",
-    var tag: String = "random"
+    var headersJson: String = "",
+    var tag: String = ""
 )

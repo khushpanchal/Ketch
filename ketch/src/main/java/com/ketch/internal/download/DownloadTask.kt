@@ -1,24 +1,15 @@
 package com.ketch.internal.download
 
-import com.ketch.internal.database.DbHelper
-import com.ketch.internal.database.DownloadEntity
 import com.ketch.internal.network.DownloadService
 import kotlinx.coroutines.delay
-import java.io.BufferedOutputStream
 import java.io.File
 import java.io.FileOutputStream
-import java.io.RandomAccessFile
 
 internal class DownloadTask(
-    private val id: Int,
     private var url: String,
     private var path: String,
     private var fileName: String,
-    private val uuid: String,
-    private val timeQueue: Long,
-    private val tag: String,
     private val downloadService: DownloadService,
-    private val dbHelper: DbHelper
 ) {
 
     suspend fun download(
@@ -32,8 +23,6 @@ internal class DownloadTask(
 
         val destinationFile = File(path, fileName)
 
-//        val randomAccessFile = RandomAccessFile(file, "rw")
-//        val out = BufferedOutputStream(FileOutputStream(randomAccessFile.fd))
         val out = FileOutputStream(destinationFile, true)
         if(file.exists()) {
             rangeStart = file.length()
@@ -41,11 +30,9 @@ internal class DownloadTask(
 
         if(rangeStart != 0L) {
             headers["Range"] = "bytes=${rangeStart}-"
-//            randomAccessFile.seek(rangeStart)
         }
 
         val responseBody = downloadService.getUrl(url, headers)
-//        deleteFileIfExists(path, fileName)
 
         var totalBytes: Long
 
@@ -56,10 +43,6 @@ internal class DownloadTask(
 
                 if(rangeStart != 0L) {
                     progressBytes = rangeStart
-                }
-
-                if(dbHelper.find(id) == null) {
-                    dbHelper.insert(DownloadEntity(id, url, path, fileName, totalBytes, progressBytes, uuid = uuid, timeQueued = timeQueue, tag = tag))
                 }
 
                 onStart.invoke(totalBytes)
@@ -76,6 +59,7 @@ internal class DownloadTask(
                     progressBytes += bytes
                     tempBytes += bytes
                     bytes = inputStream.read(buffer)
+                    //TODO remove
                     delay(50)
                     val finalTime = System.currentTimeMillis()
 

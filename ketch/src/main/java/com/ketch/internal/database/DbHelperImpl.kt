@@ -57,7 +57,6 @@ class DbHelperImpl(context: Context): DbHelper {
         values.put(DbConst.TIME_QUEUE, entity.timeQueued)
         values.put(DbConst.LAST_MODIFIED, entity.lastModified)
         values.put(DbConst.HEADERS_JSON, entity.headersJson)
-        values.put(DbConst.CONFIG_JSON, entity.configsJson)
         values.put(DbConst.TAG, entity.tag)
 
         try {
@@ -65,7 +64,6 @@ class DbHelperImpl(context: Context): DbHelper {
         } catch (e: Exception) {
             e.printStackTrace()
         }
-//        db.insert(TABLE_NAME, null, values)
     }
 
     override suspend fun update(entity: DownloadEntity) {
@@ -82,7 +80,6 @@ class DbHelperImpl(context: Context): DbHelper {
             values.put(DbConst.TIME_QUEUE, entity.timeQueued)
             values.put(DbConst.LAST_MODIFIED, entity.lastModified)
             values.put(DbConst.HEADERS_JSON, entity.headersJson)
-            values.put(DbConst.CONFIG_JSON, entity.configsJson)
             values.put(DbConst.TAG, entity.tag)
             db.update(
                 TABLE_NAME,
@@ -124,7 +121,18 @@ class DbHelperImpl(context: Context): DbHelper {
     }
 
     override suspend fun updateStatus(id: Int, status: String, lastModifiedAt: Long) {
-
+        try {
+            val values = ContentValues()
+            values.put(DbConst.STATUS, status)
+            db.update(
+                TABLE_NAME,
+                values,
+                DbConst.ID + " = ? ",
+                arrayOf("$id")
+            )
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     override suspend fun empty() {
@@ -166,10 +174,8 @@ class DbHelperImpl(context: Context): DbHelper {
                         (cursor.getLong(cursor.getColumnIndex(DbConst.TIME_QUEUE)))
                     entity.lastModified =
                         (cursor.getLong(cursor.getColumnIndex(DbConst.LAST_MODIFIED)))
-//                    entity.headersJson =
-//                        (cursor.getString(cursor.getColumnIndex(DbConst.HEADERS_JSON)))
-                    entity.configsJson =
-                        (cursor.getString(cursor.getColumnIndex(DbConst.CONFIG_JSON)))
+                    entity.headersJson =
+                        (cursor.getString(cursor.getColumnIndex(DbConst.HEADERS_JSON)))
                     entity.tag =
                         (cursor.getString(cursor.getColumnIndex(DbConst.TAG)))
                     entities.add(entity)
@@ -218,8 +224,6 @@ class DbHelperImpl(context: Context): DbHelper {
                         (cursor.getLong(cursor.getColumnIndex(DbConst.LAST_MODIFIED)))
                     entity.headersJson =
                         (cursor.getString(cursor.getColumnIndex(DbConst.HEADERS_JSON)))
-                    entity.configsJson =
-                        (cursor.getString(cursor.getColumnIndex(DbConst.CONFIG_JSON)))
                     entity.tag =
                         (cursor.getString(cursor.getColumnIndex(DbConst.TAG)))
                     entities.add(entity)

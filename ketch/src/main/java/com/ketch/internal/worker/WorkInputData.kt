@@ -11,6 +11,6 @@ internal data class WorkInputData(
     val headers: HashMap<String, String>,
     val timeQueued: Long,
     val tag: String,
-    var downloadConfig: DownloadConfig,
+    val downloadConfig: DownloadConfig,
     val notificationConfig: NotificationConfig
 )
