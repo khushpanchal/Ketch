@@ -37,6 +37,13 @@ class DbHelperImpl(context: Context): DbHelper {
                 fileName = cursor.getString(cursor.getColumnIndex(DbConst.FILE_NAME)),
                 totalBytes = cursor.getLong(cursor.getColumnIndex(DbConst.TOTAL_BYTES)),
                 downloadedBytes = cursor.getLong(cursor.getColumnIndex(DbConst.DOWNLOADED_BYTES)),
+                eTag = cursor.getString(cursor.getColumnIndex(DbConst.E_TAG)),
+                uuid = cursor.getString(cursor.getColumnIndex(DbConst.UUID)),
+                status = cursor.getString(cursor.getColumnIndex(DbConst.STATUS)),
+                timeQueued = cursor.getLong(cursor.getColumnIndex(DbConst.TIME_QUEUE)),
+                lastModified = cursor.getLong(cursor.getColumnIndex(DbConst.LAST_MODIFIED)),
+                headersJson = cursor.getString(cursor.getColumnIndex(DbConst.HEADERS_JSON)),
+                tag = cursor.getString(cursor.getColumnIndex(DbConst.TAG)),
             )
         }
         cursor.close()

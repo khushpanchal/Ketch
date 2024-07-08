@@ -20,7 +20,7 @@ class Ketch private constructor(
     private val notificationConfig: NotificationConfig,
     private val logger: Logger
 ) {
-
+//todo singleton
     companion object {
         fun init(
             context: Context,

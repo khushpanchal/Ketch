@@ -8,10 +8,12 @@ import com.ketch.Status
 import com.ketch.internal.database.DatabaseInstance
 import com.ketch.internal.database.DownloadEntity
 import com.ketch.internal.download.DownloadTask
+import com.ketch.internal.download.ETagChecker
 import com.ketch.internal.network.RetrofitInstance
 import com.ketch.internal.notification.DownloadNotificationManager
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.ExceptionConst
+import com.ketch.internal.utils.FileUtil
 import com.ketch.internal.utils.NotificationHelper
 import com.ketch.internal.utils.WorkUtil
 import kotlinx.coroutines.CancellationException
@@ -63,6 +65,11 @@ internal class DownloadWorker(
             )
         }
 
+        val downloadService = RetrofitInstance.getDownloadService(
+            connectTimeOutInMs,
+            readTimeOutInMs
+        )
+
         return try {
             downloadNotificationManager?.sendUpdateNotification()?.let {
                 setForeground(
@@ -70,27 +77,40 @@ internal class DownloadWorker(
                 )
             }
 
+            val latestETag = ETagChecker(url, downloadService).getETag() ?: ""
+            val downloadEntity = dbHelper.find(id)
+            if(downloadEntity == null) {
+                dbHelper.insert(
+                    DownloadEntity(
+                        id, url, dirPath, fileName, 0, 0,
+                        uuid = workerParameters.id.toString(), timeQueued = timeQueued, tag = tag,
+                        headersJson = WorkUtil.hashMapToJson(headers), eTag = latestETag, lastModified = System.currentTimeMillis(),
+                        status = Status.QUEUED.toString()
+                    )
+                )
+            } else {
+                val existingETag = downloadEntity.eTag
+                if(latestETag != existingETag) {
+                    FileUtil.deleteFileIfExists(path = dirPath, name = fileName)
+                }
+            }
+
             val totalLength = DownloadTask(
                 url = url,
                 path = dirPath,
                 fileName = fileName,
-                downloadService = RetrofitInstance.getDownloadService(
-                    connectTimeOutInMs,
-                    readTimeOutInMs
-                )
+                downloadService = downloadService
             ).download(
                 headers = headers,
                 onStart = {
-                    if(dbHelper.find(id) == null) {
-                        dbHelper.insert(
-                            DownloadEntity(
-                                id, url, dirPath, fileName, it, 0,
-                                uuid = workerParameters.id.toString(), timeQueued = timeQueued, tag = tag,
-                                headersJson = WorkUtil.hashMapToJson(headers)
-                            )
+                    dbHelper.update(
+                        DownloadEntity(
+                            id, url, dirPath, fileName, it, 0,
+                            uuid = workerParameters.id.toString(), timeQueued = timeQueued, tag = tag,
+                            headersJson = WorkUtil.hashMapToJson(headers), eTag = latestETag, status = Status.STARTED.toString(),
+                            lastModified = System.currentTimeMillis()
                         )
-                    }
-
+                    )
                     setProgressAsync(
                         workDataOf(
                             DownloadConst.KEY_STATE to DownloadConst.STARTED,
