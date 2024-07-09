@@ -2,7 +2,7 @@ package com.ketch.internal.database
 
 import android.content.Context
 
-object DatabaseInstance {
+internal object DatabaseInstance {
 
     @Volatile
     private var dbHelper: DbHelper? = null

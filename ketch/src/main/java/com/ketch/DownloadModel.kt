@@ -14,5 +14,6 @@ data class DownloadModel(
     val total: Long,
     val speedInBytePerMs: Float,
     val headers: HashMap<String, String>,
-    val uuid: UUID
+    val uuid: UUID,
+    val eTag: String
 )

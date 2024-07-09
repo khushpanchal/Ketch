@@ -2,7 +2,7 @@ package com.ketch.internal.database
 
 import com.ketch.Status
 
-data class DownloadEntity (
+internal data class DownloadEntity (
     var id: Int = 0,
     var url: String = "",
     var path: String = "",

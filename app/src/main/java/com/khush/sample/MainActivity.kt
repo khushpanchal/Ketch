@@ -10,8 +10,8 @@ import android.provider.Settings
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.khush.sample.databinding.ActivityMainBinding
 import com.google.android.material.snackbar.Snackbar
+import com.khush.sample.databinding.ActivityMainBinding
 
 
 class MainActivity : AppCompatActivity() {
@@ -21,7 +21,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
         Log.i("Testing", "RequestId " + intent.extras?.getInt("key_request_id"))
 
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -68,10 +67,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun openTestFragment() {
-        //Test Download samples
-//        supportFragmentManager.beginTransaction()
-//            .replace(R.id.container, DownloadSamplesFragment.newInstance()).commit()
-
         //Test with your own url
         supportFragmentManager.beginTransaction()
             .replace(R.id.container, MainFragment.newInstance()).commit()

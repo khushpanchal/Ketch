@@ -1,6 +1,6 @@
 package com.ketch.internal.database
 
-interface DbHelper {
+internal interface DbHelper {
     suspend fun find(id: Int): DownloadEntity?
 
     suspend fun insert(entity: DownloadEntity)

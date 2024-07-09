@@ -19,9 +19,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
-import com.ketch.Ketch
 import com.ketch.DownloadModel
-import com.ketch.NotificationConfig
+import com.ketch.Ketch
 import com.ketch.Status
 import com.khush.sample.databinding.FragmentMainBinding
 import com.khush.sample.databinding.ItemFileBinding
@@ -34,9 +33,6 @@ class MainFragment : Fragment() {
 
     private lateinit var fragmentMainBinding: FragmentMainBinding
     private lateinit var adapter: FilesAdapter
-
-    private lateinit var ketch: Ketch
-
 
     companion object {
         fun newInstance(): MainFragment {
@@ -53,13 +49,6 @@ class MainFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         super.onCreateView(inflater, container, savedInstanceState)
-        ketch = Ketch.init(
-            this.requireContext(),
-            notificationConfig = NotificationConfig(
-                enabled = true,
-                smallIcon = R.drawable.ic_launcher_foreground
-            )
-        )
         observer()
         fragmentMainBinding = FragmentMainBinding.inflate(inflater)
         return fragmentMainBinding.root
@@ -101,11 +90,11 @@ class MainFragment : Fragment() {
             }
 
             override fun onCancelClick(downloadItem: DownloadModel) {
-                ketch.cancel(downloadItem.id)
+                Ketch.getInstance(context!!).cancel(downloadItem.id)
             }
 
             override fun onDownloadClick(downloadItem: DownloadModel) {
-                ketch.download(
+                Ketch.getInstance(context!!).download(
                     url = downloadItem.url,
                     fileName = downloadItem.fileName,
                     tag = downloadItem.tag
@@ -113,15 +102,15 @@ class MainFragment : Fragment() {
             }
 
             override fun onPauseClick(downloadItem: DownloadModel) {
-                ketch.pause(downloadItem.id)
+                Ketch.getInstance(context!!).pause(downloadItem.id)
             }
 
             override fun onResumeClick(downloadItem: DownloadModel) {
-                ketch.resume(downloadItem.id)
+                Ketch.getInstance(context!!).resume(downloadItem.id)
             }
 
             override fun onRetryClick(downloadItem: DownloadModel) {
-                ketch.retry(downloadItem.id)
+                Ketch.getInstance(context!!).retry(downloadItem.id)
             }
         })
         fragmentMainBinding.recyclerView.adapter = adapter
@@ -144,7 +133,7 @@ class MainFragment : Fragment() {
             } else if (fileName.isEmpty()) {
                 Toast.makeText(this.context, "Enter Valid File name", Toast.LENGTH_SHORT).show()
             } else {
-                ketch.download(url = url, fileName = fileName)
+                Ketch.getInstance(requireContext()).download(url = url, fileName = fileName)
             }
         }
 
@@ -160,7 +149,8 @@ class MainFragment : Fragment() {
             total = 0L,
             speedInBytePerMs = 0f,
             headers = hashMapOf(),
-            uuid = UUID.randomUUID()
+            uuid = UUID.randomUUID(),
+            eTag = ""
         ))
 
         adapter.submitList(testList)
@@ -170,7 +160,7 @@ class MainFragment : Fragment() {
     private fun observer() {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                ketch.observeDownloads()
+                Ketch.getInstance(requireContext()).observeDownloads()
                     .collect {//observe from viewModel to survive configuration change
                         if(it.isNotEmpty()) {
                             adapter.submitList(it)

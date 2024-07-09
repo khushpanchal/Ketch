@@ -13,13 +13,16 @@ import com.ketch.DownloadModel
 import com.ketch.Logger
 import com.ketch.NotificationConfig
 import com.ketch.Status
+import com.ketch.internal.utils.UserAction
 import com.ketch.internal.database.DbHelper
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.ExceptionConst
 import com.ketch.internal.utils.FileUtil.deleteFileIfExists
+import com.ketch.internal.utils.NotificationConst
 import com.ketch.internal.utils.WorkUtil
 import com.ketch.internal.utils.WorkUtil.toJson
 import com.ketch.internal.worker.DownloadWorker
+import com.ketch.internal.utils.UserActionHelper
 import com.ketch.internal.worker.WorkInputData
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -32,12 +35,14 @@ import java.util.UUID
 
 internal class DownloadManager(
     context: Context,
-    private val logger: Logger,
-    private val downloadConfig: DownloadConfig,
-    private val notificationConfig: NotificationConfig,
     private val dbHelper: DbHelper,
     private val workManager: WorkManager
 ) {
+
+    private var logger: Logger? = null
+    private var downloadConfig: DownloadConfig? = null
+    private var notificationConfig: NotificationConfig? = null
+
     private val _downloadItems = MutableStateFlow<List<DownloadModel>>(listOf())
     val downloadItems: StateFlow<List<DownloadModel>> = _downloadItems
 
@@ -87,7 +92,8 @@ internal class DownloadManager(
                         total = it.totalLength,
                         speedInBytePerMs = it.speedInBytePerMs,
                         headers = it.headers,
-                        uuid = it.uuid
+                        uuid = it.uuid,
+                        eTag = it.eTag
                     )
                     downloadModelList.add(downloadModel)
                 }
@@ -114,7 +120,8 @@ internal class DownloadManager(
                         timeQueued = entity.timeQueued,
                         totalLength = entity.totalBytes,
                         progress = ((entity.downloadedBytes * 100)/entity.totalBytes).toInt(),
-                        uuid = UUID.fromString(entity.uuid)
+                        uuid = UUID.fromString(entity.uuid),
+                        eTag = entity.eTag
                     )
                 }
             }
@@ -124,17 +131,18 @@ internal class DownloadManager(
     private fun workCancelled(workInfo: WorkInfo) {
         val id = findIdFromUUID(workInfo.id) ?: return
         val req = idDownloadRequestMap[id] ?: return
-        if(req.status == Status.PAUSED) {
-            logger.log(msg = "Download Paused. FileName: ${req.fileName}, URL: ${req.url}")
+
+        if(UserActionHelper.getUserAction(id) == UserAction.PAUSE.toString()) {
+            req.status = Status.PAUSED
+            logger?.log(msg = "Download Paused. FileName: ${req.fileName}, URL: ${req.url}")
             req.listener?.onPause()
             return
         }
-        if (req.status != Status.CANCELLED) {
-            deleteFileIfExists(req.path, req.fileName)
-            req.status = Status.CANCELLED
-            logger.log(msg = "Download Cancelled. FileName: ${req.fileName}, URL: ${req.url}")
-            req.listener?.onCancel()
-        }
+
+        deleteFileIfExists(req.path, req.fileName)
+        req.status = Status.CANCELLED
+        logger?.log(msg = "Download Cancelled. FileName: ${req.fileName}, URL: ${req.url}")
+        req.listener?.onCancel()
     }
 
     private fun workFailed(workInfo: WorkInfo) {
@@ -142,7 +150,7 @@ internal class DownloadManager(
         val req = idDownloadRequestMap[id] ?: return
         req.status = Status.FAILED
         val error = workInfo.outputData.getString(ExceptionConst.KEY_EXCEPTION) ?: ""
-        logger.log(msg = "Download Failed. FileName: ${req.fileName}, URL: ${req.url}, Reason: $error")
+        logger?.log(msg = "Download Failed. FileName: ${req.fileName}, URL: ${req.url}, Reason: $error")
         req.listener?.onFailure(error)
     }
 
@@ -151,7 +159,7 @@ internal class DownloadManager(
         val req = idDownloadRequestMap[id] ?: return
         req.status = Status.SUCCESS
         req.progress = 100
-        logger.log(msg = "Download Success. FileName: ${req.fileName}, URL: ${req.url}")
+        logger?.log(msg = "Download Success. FileName: ${req.fileName}, URL: ${req.url}")
         req.listener?.onSuccess()
     }
 
@@ -165,9 +173,12 @@ internal class DownloadManager(
                         DownloadConst.KEY_LENGTH,
                         DownloadConst.DEFAULT_VALUE_LENGTH
                     )
+
+                val eTag = workInfo.progress.getString(DownloadConst.KEY_E_TAG)
+                if(eTag != null) req.eTag = eTag
                 req.status = Status.STARTED
                 req.totalLength = totalLength
-                logger.log(msg = "Download Started. FileName: ${req.fileName}, URL: ${req.url}, Size in bytes: $totalLength")
+                logger?.log(msg = "Download Started. FileName: ${req.fileName}, URL: ${req.url}, Size in bytes: $totalLength")
                 req.listener?.onStart(totalLength)
             }
 
@@ -186,17 +197,19 @@ internal class DownloadManager(
                     DownloadConst.KEY_SPEED,
                     DownloadConst.DEFAULT_VALUE_SPEED
                 )
+                val eTag = workInfo.progress.getString(DownloadConst.KEY_E_TAG)
+                if(eTag != null) req.eTag = eTag
                 if (req.status == Status.QUEUED) { //Edge case when Progress called skipping Started
                     req.status = Status.STARTED
                     req.totalLength = totalLength
-                    logger.log(msg = "Download Started. FileName: ${req.fileName}, URL: ${req.url}, Size in bytes: $totalLength")
+                    logger?.log(msg = "Download Started. FileName: ${req.fileName}, URL: ${req.url}, Size in bytes: $totalLength")
                     req.listener?.onStart(totalLength)
                 }
                 req.status = Status.PROGRESS
                 req.progress = progress
                 req.totalLength = totalLength
                 req.speedInBytePerMs = speed
-                logger.log(msg = "Download in Progress. FileName: ${req.fileName}, URL: ${req.url}, Size in bytes: $totalLength, downloadPercent: $progress%, downloadSpeedInBytesPerMilliSeconds: $speed b/ms")
+                logger?.log(msg = "Download in Progress. FileName: ${req.fileName}, URL: ${req.url}, Size in bytes: $totalLength, downloadPercent: $progress%, downloadSpeedInBytesPerMilliSeconds: $speed b/ms")
                 req.listener?.onProgress(totalLength, progress, speed)
             }
         }
@@ -206,22 +219,23 @@ internal class DownloadManager(
         val id = findIdFromUUID(workInfo.id) ?: return
         val req = idDownloadRequestMap[id] ?: return
         req.status = Status.QUEUED
-        logger.log(msg = "Download Queued. FileName: ${req.fileName}, URL: ${req.url}")
+        logger?.log(msg = "Download Queued. FileName: ${req.fileName}, URL: ${req.url}")
         req.listener?.onQueue()
     }
 
     fun download(downloadRequest: DownloadRequest) {
 
+        UserActionHelper.setUserAction(downloadRequest.id, UserAction.START)
         val workInputData = WorkInputData(
             url = downloadRequest.url,
             path = downloadRequest.path,
             fileName = downloadRequest.fileName,
             id = downloadRequest.id,
             headers = downloadRequest.headers,
-            notificationConfig = notificationConfig,
+            notificationConfig = notificationConfig ?: NotificationConfig(smallIcon = NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON),
             timeQueued = downloadRequest.timeQueued,
             tag = downloadRequest.tag,
-            downloadConfig = downloadConfig
+            downloadConfig = downloadConfig ?: DownloadConfig()
         )
 
         val inputDataBuilder = Data.Builder()
@@ -251,9 +265,8 @@ internal class DownloadManager(
 
     fun cancel(id: Int) {
         val req = idDownloadRequestMap[id] ?: return
-        if (req.status != Status.CANCELLED) {
-            workManager.cancelUniqueWork(id.toString())
-        }
+        UserActionHelper.setUserAction(id, UserAction.CANCEL)
+        workManager.cancelUniqueWork(id.toString())
     }
 
     fun cancel(tag: String) {
@@ -278,10 +291,8 @@ internal class DownloadManager(
 
     fun pause(id: Int) {
         val req = idDownloadRequestMap[id] ?: return
-        if (req.status != Status.CANCELLED && req.status != Status.PAUSED) {
-            req.status = Status.PAUSED
-            workManager.cancelUniqueWork(id.toString())
-        }
+        UserActionHelper.setUserAction(id, UserAction.PAUSE)
+        workManager.cancelUniqueWork(id.toString())
     }
 
     fun pause(tag: String) {
@@ -302,16 +313,15 @@ internal class DownloadManager(
 
     fun resume(id: Int) {
         val req = idDownloadRequestMap[id] ?: return
-        if(req.status == Status.PAUSED || req.status == Status.CANCELLED) { //todo check
-            download(req)
-        }
+        UserActionHelper.setUserAction(id, UserAction.RESUME)
+        download(req)
+
     }
 
     fun retry(id: Int) {
         val req = idDownloadRequestMap[id] ?: return
-        if(req.status == Status.FAILED) {
-            download(req)
-        }
+        UserActionHelper.setUserAction(id, UserAction.RETRY)
+        download(req)
     }
 
     fun resume(tag: String) {
@@ -360,6 +370,16 @@ internal class DownloadManager(
             }
         }
         return null
+    }
+
+    fun setConfigs(
+        logger: Logger,
+        downloadConfig: DownloadConfig,
+        notificationConfig: NotificationConfig
+    ) {
+        this.logger = logger
+        this.downloadConfig = downloadConfig
+        this.notificationConfig = notificationConfig
     }
 
 }

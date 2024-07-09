@@ -5,6 +5,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.ketch.Status
+import com.ketch.internal.utils.UserAction
 import com.ketch.internal.database.DatabaseInstance
 import com.ketch.internal.database.DownloadEntity
 import com.ketch.internal.download.DownloadTask
@@ -15,6 +16,7 @@ import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.ExceptionConst
 import com.ketch.internal.utils.FileUtil
 import com.ketch.internal.utils.NotificationHelper
+import com.ketch.internal.utils.UserActionHelper
 import com.ketch.internal.utils.WorkUtil
 import kotlinx.coroutines.CancellationException
 
@@ -41,33 +43,25 @@ internal class DownloadWorker(
         val url = workInputData.url
         val dirPath = workInputData.path
         val fileName = workInputData.fileName
-        val connectTimeOutInMs = workInputData.downloadConfig.connectTimeOutInMs
-        val readTimeOutInMs = workInputData.downloadConfig.readTimeOutInMs
+        val downloadConfig = workInputData.downloadConfig
+        val notificationConfig = workInputData.notificationConfig
         val headers = workInputData.headers
         val timeQueued = workInputData.timeQueued
         val tag = workInputData.tag
-        val notificationEnabled = workInputData.notificationConfig.enabled
 
-        if (notificationEnabled) {
-            val notificationSmallIcon = workInputData.notificationConfig.smallIcon
-            val notificationChannelName = workInputData.notificationConfig.channelName
-            val notificationChannelDescription = workInputData.notificationConfig.channelDescription
-            val notificationImportance = workInputData.notificationConfig.importance
+        if (notificationConfig.enabled) {
             downloadNotificationManager = DownloadNotificationManager(
                 context = context,
-                notificationChannelName = notificationChannelName,
-                notificationChannelDescription = notificationChannelDescription,
-                notificationImportance = notificationImportance,
+                notificationConfig = notificationConfig,
                 requestId = id,
-                notificationSmallIcon = notificationSmallIcon,
                 fileName = fileName,
                 workId = getId()
             )
         }
 
         val downloadService = RetrofitInstance.getDownloadService(
-            connectTimeOutInMs,
-            readTimeOutInMs
+            downloadConfig.connectTimeOutInMs,
+            downloadConfig.readTimeOutInMs
         )
 
         return try {
@@ -77,13 +71,13 @@ internal class DownloadWorker(
                 )
             }
 
-            val latestETag = ETagChecker(url, downloadService).getETag() ?: ""
-            val downloadEntity = dbHelper.find(id)
+            val latestETag = ETagChecker(workInputData.url, downloadService).getETag() ?: ""
+            val downloadEntity = dbHelper.find(workInputData.id)
             if(downloadEntity == null) {
                 dbHelper.insert(
                     DownloadEntity(
                         id, url, dirPath, fileName, 0, 0,
-                        uuid = workerParameters.id.toString(), timeQueued = timeQueued, tag = tag,
+                        uuid = getId().toString(), timeQueued = timeQueued, tag = tag,
                         headersJson = WorkUtil.hashMapToJson(headers), eTag = latestETag, lastModified = System.currentTimeMillis(),
                         status = Status.QUEUED.toString()
                     )
@@ -106,7 +100,7 @@ internal class DownloadWorker(
                     dbHelper.update(
                         DownloadEntity(
                             id, url, dirPath, fileName, it, 0,
-                            uuid = workerParameters.id.toString(), timeQueued = timeQueued, tag = tag,
+                            uuid = getId().toString(), timeQueued = timeQueued, tag = tag,
                             headersJson = WorkUtil.hashMapToJson(headers), eTag = latestETag, status = Status.STARTED.toString(),
                             lastModified = System.currentTimeMillis()
                         )
@@ -115,7 +109,8 @@ internal class DownloadWorker(
                         workDataOf(
                             DownloadConst.KEY_STATE to DownloadConst.STARTED,
                             DownloadConst.KEY_ID to id,
-                            DownloadConst.KEY_LENGTH to it
+                            DownloadConst.KEY_LENGTH to it,
+                            DownloadConst.KEY_E_TAG to latestETag
                         )
                     )
                 },
@@ -130,7 +125,8 @@ internal class DownloadWorker(
                             DownloadConst.KEY_ID to id,
                             DownloadConst.KEY_PROGRESS to progress,
                             DownloadConst.KEY_LENGTH to length,
-                            DownloadConst.KEY_SPEED to speed
+                            DownloadConst.KEY_SPEED to speed,
+                            DownloadConst.KEY_E_TAG to latestETag
                         )
                     )
                     if (!NotificationHelper.isDismissedNotification(downloadNotificationManager?.getNotificationId())) {
@@ -151,10 +147,21 @@ internal class DownloadWorker(
             Result.success()
         } catch (e: Exception) {
             if (e is CancellationException) {
-                //todo UPDATE DB: check if possible
-                //todo: issue-> on pause also it is updated to cancelled.
-                dbHelper.updateStatus(id, Status.CANCELLED.toString(), System.currentTimeMillis())
-//                downloadNotificationManager?.sendDownloadCancelledNotification()
+                if(UserActionHelper.getUserAction(id) == UserAction.PAUSE.toString()) {
+                    dbHelper.updateStatus(
+                        id,
+                        Status.PAUSED.toString(),
+                        System.currentTimeMillis()
+                    )
+                    downloadNotificationManager?.sendDownloadPausedNotification()
+                } else {
+                    dbHelper.updateStatus(
+                        id,
+                        Status.PAUSED.toString(),
+                        System.currentTimeMillis()
+                    )
+                    downloadNotificationManager?.sendDownloadCancelledNotification()
+                }
             } else {
                 dbHelper.updateStatus(id, Status.FAILED.toString(), System.currentTimeMillis())
                 downloadNotificationManager?.sendDownloadFailedNotification()

@@ -1,6 +1,7 @@
 package com.ketch.internal.download
 
 import com.ketch.internal.network.DownloadService
+import com.ketch.internal.utils.DownloadConst
 
 internal class ETagChecker(
     private val url: String,
@@ -8,7 +9,7 @@ internal class ETagChecker(
 ) {
     suspend fun getETag(): String? {
         val response = downloadService.getHeadersOnly(url)
-        return response.headers().get("ETag")
+        return response.headers().get(DownloadConst.ETAG_HEADER)
     }
 
 }

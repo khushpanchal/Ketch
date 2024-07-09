@@ -15,10 +15,12 @@ internal object DownloadConst {
     const val PROGRESS = "progress"
     const val STARTED = "started"
     const val KEY_LENGTH = "key_length"
+    const val KEY_E_TAG = "key_etag"
     const val DEFAULT_VALUE_LENGTH = 0L
     const val KEY_SPEED = "key_speed"
     const val DEFAULT_VALUE_SPEED = 0F
     const val DEFAULT_VALUE_TIME_QUEUED = 0L
     const val KEY_REQUEST_ID = "key_request_id"
     const val KEY_WORK_INPUT_DATA = "key_work_input_data"
+    const val ETAG_HEADER = "ETag"
 }

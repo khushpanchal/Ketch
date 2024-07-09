@@ -9,7 +9,7 @@ import com.ketch.internal.utils.DbConst
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-class DbHelperImpl(context: Context): DbHelper {
+internal class DbHelperImpl(context: Context): DbHelper {
 
     private var db: SQLiteDatabase
 
@@ -67,7 +67,7 @@ class DbHelperImpl(context: Context): DbHelper {
         values.put(DbConst.TAG, entity.tag)
 
         try {
-            db.insertWithOnConflict(TABLE_NAME, null, values, SQLiteDatabase.CONFLICT_NONE);
+            db.insertWithOnConflict(TABLE_NAME, null, values, SQLiteDatabase.CONFLICT_NONE)
         } catch (e: Exception) {
             e.printStackTrace()
         }

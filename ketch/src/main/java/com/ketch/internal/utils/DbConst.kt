@@ -1,6 +1,6 @@
 package com.ketch.internal.utils
 
-object DbConst {
+internal object DbConst {
     const val ID = "id"
     const val URL = "url"
     const val PATH = "dir_path"

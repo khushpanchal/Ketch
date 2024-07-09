@@ -1,7 +1,6 @@
 package com.ketch.internal.download
 
 import com.ketch.internal.network.DownloadService
-import kotlinx.coroutines.delay
 import java.io.File
 import java.io.FileOutputStream
 
@@ -59,8 +58,7 @@ internal class DownloadTask(
                     progressBytes += bytes
                     tempBytes += bytes
                     bytes = inputStream.read(buffer)
-                    //TODO remove
-                    delay(50)
+
                     val finalTime = System.currentTimeMillis()
 
                     if (finalTime - progressInvokeTime >= 500) {
@@ -73,8 +71,6 @@ internal class DownloadTask(
                             totalBytes,
                             speed
                         )
-//                        dbHelper.updateProgress(id, randomAccessFile.length(), System.currentTimeMillis())
-
                     }
                 }
                 onProgress.invoke(100, totalBytes, 0F)

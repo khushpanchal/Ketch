@@ -1,6 +1,6 @@
 package com.ketch.internal.database
 
-class NoOpsDbHelperImpl: DbHelper {
+internal class NoOpsDbHelperImpl: DbHelper {
     override suspend fun find(id: Int): DownloadEntity? {
         return null
     }

@@ -8,6 +8,8 @@ import com.ketch.internal.database.DatabaseInstance
 import com.ketch.internal.download.DownloadManager
 import com.ketch.internal.download.DownloadRequest
 import com.ketch.internal.download.DownloadRequestListener
+import com.ketch.internal.download.ETagChecker
+import com.ketch.internal.network.RetrofitInstance
 import com.ketch.internal.utils.DownloadLogger
 import com.ketch.internal.utils.ExceptionConst
 import com.ketch.internal.utils.FileUtil
@@ -16,37 +18,47 @@ import kotlinx.coroutines.flow.StateFlow
 
 class Ketch private constructor(
     private val context: Context,
-    private val downloadConfig: DownloadConfig,
-    private val notificationConfig: NotificationConfig,
-    private val logger: Logger
+    private var downloadConfig: DownloadConfig = DownloadConfig(),
+    private var notificationConfig: NotificationConfig = NotificationConfig(smallIcon = NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON),
+    private var logger: Logger = DownloadLogger(false)
 ) {
-//todo singleton
-    companion object {
-        fun init(
-            context: Context,
-            downloadConfig: DownloadConfig = DownloadConfig(),
-            notificationConfig: NotificationConfig = NotificationConfig(smallIcon = NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON),
-            enableLogs: Boolean = false,
-            logger: Logger = DownloadLogger(enableLogs)
-        ): Ketch {
 
-            return Ketch(
-                context = context.applicationContext,
-                downloadConfig = downloadConfig,
-                notificationConfig = notificationConfig,
-                logger = logger
-            )
+    companion object {
+
+        private lateinit var ketch: Ketch
+
+        fun getInstance(
+            context: Context
+        ): Ketch {
+            if(!::ketch.isInitialized) {
+                ketch = Ketch(
+                    context = context.applicationContext
+                )
+            }
+            return ketch
         }
     }
 
     private val downloadManager = DownloadManager(
         context = context,
-        logger = logger,
-        downloadConfig = downloadConfig,
-        notificationConfig = notificationConfig,
         dbHelper = DatabaseInstance.getDbHelper(context),
         workManager = WorkManager.getInstance(context.applicationContext)
     )
+
+    @Synchronized
+    fun initConfig(
+        downloadConfig: DownloadConfig = DownloadConfig(),
+        notificationConfig: NotificationConfig = NotificationConfig(smallIcon = NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON),
+        enableLogs: Boolean = false,
+        logger: Logger = DownloadLogger(enableLogs)
+    ) {
+        this.downloadConfig = downloadConfig
+        this.notificationConfig = notificationConfig
+        this.logger = logger
+        downloadManager.setConfigs(
+            logger, downloadConfig, notificationConfig
+        )
+    }
 
     @Synchronized
     fun download(
@@ -194,6 +206,10 @@ class Ketch private constructor(
     @Synchronized
     fun clearDb(id: Int) {
         downloadManager.clearDb(id)
+    }
+
+    suspend fun isContentValid(url: String, eTag: String): Boolean {
+        return ETagChecker(url, RetrofitInstance.getDownloadService()).getETag() == eTag
     }
 
 }

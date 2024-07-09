@@ -18,5 +18,6 @@ internal data class DownloadRequest(
     var progress: Int = DownloadConst.DEFAULT_VALUE_PROGRESS,
     var speedInBytePerMs: Float = DownloadConst.DEFAULT_VALUE_SPEED,
     var uuid: UUID = UUID.randomUUID(),
-    var listener: DownloadRequestListener? = null
+    var listener: DownloadRequestListener? = null,
+    var eTag: String = ""
 )
