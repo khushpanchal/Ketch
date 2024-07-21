@@ -8,12 +8,12 @@ internal object NotificationConst {
     const val KEY_NOTIFICATION_CHANNEL_DESCRIPTION = "key_notification_channel_description"
     const val DEFAULT_VALUE_NOTIFICATION_CHANNEL_DESCRIPTION = "Notify file download status"
     const val KEY_NOTIFICATION_CHANNEL_IMPORTANCE = "key_notification_channel_importance"
-    const val DEFAULT_VALUE_NOTIFICATION_CHANNEL_IMPORTANCE = 4
+    const val DEFAULT_VALUE_NOTIFICATION_CHANNEL_IMPORTANCE = 2 // LOW
     const val KEY_NOTIFICATION_SMALL_ICON = "key_small_notification_icon"
     const val DEFAULT_VALUE_NOTIFICATION_SMALL_ICON = -1
     const val KEY_NOTIFICATION_ID = "key_notification_id"
 
-    //Actions
+    // Actions
     const val ACTION_NOTIFICATION_DISMISSED = "ACTION_NOTIFICATION_DISMISSED"
     const val ACTION_DOWNLOAD_COMPLETED = "ACTION_DOWNLOAD_COMPLETED"
     const val ACTION_DOWNLOAD_FAILED = "ACTION_DOWNLOAD_FAILED"
@@ -24,7 +24,7 @@ internal object NotificationConst {
     const val ACTION_NOTIFICATION_PAUSE_CLICK = "ACTION_NOTIFICATION_PAUSE_CLICK"
     const val ACTION_NOTIFICATION_CANCEL_CLICK = "ACTION_NOTIFICATION_CANCEL_CLICK"
 
-    //Cancel
+    // Cancel
     const val CANCEL_BUTTON_TEXT = "Cancel"
     const val PAUSE_BUTTON_TEXT = "Pause"
     const val RESUME_BUTTON_TEXT = "Resume"

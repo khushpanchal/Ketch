@@ -1,20 +1,17 @@
 package com.ketch
 
-import android.app.NotificationManager
 import android.content.Context
-import android.os.Build
 import androidx.work.WorkManager
 import com.ketch.internal.database.DatabaseInstance
 import com.ketch.internal.download.DownloadManager
 import com.ketch.internal.download.DownloadRequest
-import com.ketch.internal.download.DownloadRequestListener
 import com.ketch.internal.download.ETagChecker
 import com.ketch.internal.network.RetrofitInstance
 import com.ketch.internal.utils.DownloadLogger
 import com.ketch.internal.utils.ExceptionConst
 import com.ketch.internal.utils.FileUtil
 import com.ketch.internal.utils.NotificationConst
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
 
 class Ketch private constructor(
     private val context: Context,
@@ -30,7 +27,7 @@ class Ketch private constructor(
         fun getInstance(
             context: Context
         ): Ketch {
-            if(!::ketch.isInitialized) {
+            if (!::ketch.isInitialized) {
                 ketch = Ketch(
                     context = context.applicationContext
                 )
@@ -41,11 +38,10 @@ class Ketch private constructor(
 
     private val downloadManager = DownloadManager(
         context = context,
-        dbHelper = DatabaseInstance.getDbHelper(context),
+        dbHelper = DatabaseInstance.getInstance(context).downloadDao(),
         workManager = WorkManager.getInstance(context.applicationContext)
     )
 
-    @Synchronized
     fun initConfig(
         downloadConfig: DownloadConfig = DownloadConfig(),
         notificationConfig: NotificationConfig = NotificationConfig(smallIcon = NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON),
@@ -60,33 +56,17 @@ class Ketch private constructor(
         )
     }
 
-    @Synchronized
     fun download(
         url: String,
         path: String = FileUtil.getDefaultDownloadPath(),
         fileName: String = FileUtil.getFileNameFromUrl(url),
         tag: String = "",
-        headers: HashMap<String, String> = hashMapOf(),
-        onQueue: () -> Unit = {},
-        onStart: (length: Long) -> Unit = {},
-        onProgress: (length: Long, progress: Int, speedInBytePerMs: Float) -> Unit = { _, _, _ -> },
-        onSuccess: () -> Unit = {},
-        onFailure: (error: String) -> Unit = {},
-        onCancel: () -> Unit = {},
-        onPause: ()-> Unit = {}
+        metaData: String = "",
+        headers: HashMap<String, String> = hashMapOf()
     ): Int {
 
         if (url.isEmpty() || path.isEmpty() || fileName.isEmpty()) {
             throw RuntimeException(ExceptionConst.EXCEPTION_PARAM_MISSING)
-        }
-
-        if (notificationConfig.enabled && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            val checkNotificationEnabled =
-                context.applicationContext.getSystemService(NotificationManager::class.java)
-                    .areNotificationsEnabled()
-            if (!checkNotificationEnabled) {
-                throw RuntimeException(ExceptionConst.EXCEPTION_NOTIFICATION_DISABLED)
-            }
         }
 
         val downloadRequest = DownloadRequest(
@@ -94,122 +74,95 @@ class Ketch private constructor(
             path = path,
             fileName = fileName,
             tag = tag,
-            headers = headers
+            headers = headers,
+            metaData = metaData
         )
-
-        val downloadRequestListener = object : DownloadRequestListener {
-            override fun onQueue() {
-                onQueue.invoke()
-            }
-
-            override fun onStart(length: Long) {
-                onStart.invoke(length)
-            }
-
-            override fun onProgress(length: Long, progress: Int, speedInBytePerMs: Float) {
-                onProgress.invoke(length, progress, speedInBytePerMs)
-            }
-
-            override fun onSuccess() {
-                onSuccess.invoke()
-            }
-
-            override fun onFailure(error: String) {
-                onFailure.invoke(error)
-            }
-
-            override fun onCancel() {
-                onCancel.invoke()
-            }
-
-            override fun onPause() {
-                onPause.invoke()
-            }
-
-        }
-
-        downloadRequest.listener = downloadRequestListener
-        downloadManager.download(downloadRequest)
+        downloadManager.downloadAsync(downloadRequest)
         return downloadRequest.id
     }
 
-    @Synchronized
     fun cancel(id: Int) {
-        downloadManager.cancel(id)
+        downloadManager.cancelAsync(id)
     }
 
-    @Synchronized
     fun cancel(tag: String) {
-        downloadManager.cancel(tag)
+        downloadManager.cancelAsync(tag)
     }
 
-    @Synchronized
     fun cancelAll() {
-        downloadManager.cancelAll()
+        downloadManager.cancelAllAsync()
     }
 
-    @Synchronized
-    fun observeDownloads(): StateFlow<List<DownloadModel>> {
-        return downloadManager.downloadItems //Observe download items requested by this class instance only.
+    fun observeDownloads(): Flow<List<DownloadModel>> {
+        return downloadManager.observeAllDownloads()
     }
 
-    @Synchronized
-    fun stopObserving() {
-        downloadManager.stopObserving()
+    fun observeDownloadById(id: Int): Flow<DownloadModel> {
+        return downloadManager.observeDownloadById(id)
     }
 
-    @Synchronized
+    fun observeDownloadByTag(tag: String): Flow<List<DownloadModel>> {
+        return downloadManager.observeDownloadsByTag(tag)
+    }
+
     fun pause(id: Int) {
-        downloadManager.pause(id)
+        downloadManager.pauseAsync(id)
     }
 
-    @Synchronized
     fun pause(tag: String) {
-        downloadManager.pause(tag)
+        downloadManager.pauseAsync(tag)
     }
 
-    @Synchronized
     fun pauseAll() {
-        downloadManager.pauseAll()
+        downloadManager.pauseAllAsync()
     }
 
-    @Synchronized
     fun resume(id: Int) {
-        downloadManager.resume(id)
+        downloadManager.resumeAsync(id)
     }
 
-    @Synchronized
     fun resume(tag: String) {
-        downloadManager.resume(tag)
+        downloadManager.resumeAsync(tag)
     }
 
-    @Synchronized
     fun resumeAll() {
-        downloadManager.resumeAll()
+        downloadManager.resumeAllAsync()
     }
 
-    @Synchronized
     fun retry(id: Int) {
-        downloadManager.retry(id)
+        downloadManager.retryAsync(id)
     }
 
-    @Synchronized
+    fun retry(tag: String) {
+        downloadManager.retryAsync(tag)
+    }
+
+    fun retryAll() {
+        downloadManager.retryAllAsync()
+    }
+
     fun clearAllDb() {
-        downloadManager.clearAllDb()
+        downloadManager.clearAllDbAsync()
     }
 
-    @Synchronized
     fun clearDb(timeInMillis: Long) {
-        downloadManager.clearDb(timeInMillis)
+        downloadManager.clearDbAsync(timeInMillis)
     }
 
-    @Synchronized
     fun clearDb(id: Int) {
-        downloadManager.clearDb(id)
+        downloadManager.clearDbAsync(id)
     }
 
-    suspend fun isContentValid(url: String, eTag: String): Boolean {
-        return ETagChecker(url, RetrofitInstance.getDownloadService()).getETag() == eTag
+    fun clearDb(tag: String) {
+        downloadManager.clearDbAsync(tag)
+    }
+
+    suspend fun isContentValid(
+        url: String,
+        headers: HashMap<String, String> = hashMapOf(),
+        eTag: String
+    ): Boolean {
+        return ETagChecker(url, RetrofitInstance.getDownloadService()).getETag(headers) == eTag
     }
 
 }

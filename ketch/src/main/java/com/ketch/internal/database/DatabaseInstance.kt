@@ -1,21 +1,29 @@
 package com.ketch.internal.database
 
 import android.content.Context
+import androidx.room.Room
+import com.ketch.internal.utils.DbConst
 
 internal object DatabaseInstance {
 
     @Volatile
-    private var dbHelper: DbHelper? = null
+    private var INSTANCE: DownloadDatabase? = null
 
-    fun getDbHelper(context: Context): DbHelper {
-        if(dbHelper == null) {
-            synchronized(this) {
-                if(dbHelper==null) {
-                    dbHelper = DbHelperImpl(context)
+    fun getInstance(context: Context): DownloadDatabase {
+        if (INSTANCE == null) {
+            synchronized(DownloadDatabase::class) {
+                if (INSTANCE == null) {
+                    INSTANCE = buildRoomDB(context)
                 }
             }
         }
-        return dbHelper!!
+        return INSTANCE!!
     }
 
+    private fun buildRoomDB(context: Context) =
+        Room.databaseBuilder(
+            context.applicationContext,
+            DownloadDatabase::class.java,
+            DbConst.DATABASE_NAME
+        ).build()
 }

@@ -8,12 +8,15 @@ data class DownloadModel(
     val fileName: String,
     val tag: String,
     val id: Int,
-    val status: Status,
-    val timeQueued: Long,
-    val progress: Int,
-    val total: Long,
-    val speedInBytePerMs: Float,
     val headers: HashMap<String, String>,
+    val timeQueued: Long,
+    val status: Status,
+    val total: Long,
+    val progress: Int,
+    val speedInBytePerMs: Float,
     val uuid: UUID,
-    val eTag: String
+    val lastModified: Long,
+    val eTag: String,
+    val metaData: String,
+    val failureReason: String
 )

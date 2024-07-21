@@ -15,20 +15,18 @@ import com.ketch.NotificationConfig
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.NotificationConst
 import com.ketch.internal.utils.TextUtil
-import java.util.UUID
 
 internal class DownloadNotificationManager(
     private val context: Context,
     private val notificationConfig: NotificationConfig,
     private val requestId: Int,
-    private val fileName: String,
-    private val workId: UUID
+    private val fileName: String
 ) {
 
     private var foregroundInfo: ForegroundInfo? = null
     private val notificationBuilder =
         NotificationCompat.Builder(context, NotificationConst.NOTIFICATION_CHANNEL_ID)
-    private val notificationId = ((requestId + System.currentTimeMillis()) % Int.MAX_VALUE).toInt()
+    private val notificationId = requestId
 
     init {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -48,17 +46,7 @@ internal class DownloadNotificationManager(
                 notificationBuilder
                     .setProgress(DownloadConst.MAX_VALUE_PROGRESS, progress, false)
                     .setContentText(
-                        "${
-                            TextUtil.getTimeLeftText(
-                                speedInBPerMs,
-                                progress,
-                                length
-                            )
-                        }, ${TextUtil.getSpeedText(speedInBPerMs)}, total: ${
-                            TextUtil.getTotalLengthText(
-                                length
-                            )
-                        }"
+                        setContentTextNotification(speedInBPerMs, progress, length)
                     )
                     .setSubText("$progress%")
                     .build(),
@@ -69,7 +57,7 @@ internal class DownloadNotificationManager(
                 }
             )
         } else {
-            //Open Application
+            // Open Application
             val intentOpen = context.packageManager.getLaunchIntentForPackage(context.packageName)
             intentOpen?.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             intentOpen?.putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
@@ -81,35 +69,41 @@ internal class DownloadNotificationManager(
                     PendingIntent.FLAG_IMMUTABLE
                 )
 
-            //Dismiss Notification
+            // Dismiss Notification
             val intentDismiss = Intent(context, NotificationReceiver::class.java).apply {
                 action = NotificationConst.ACTION_NOTIFICATION_DISMISSED
             }
             intentDismiss.putExtra(NotificationConst.KEY_NOTIFICATION_ID, notificationId)
             val pendingIntentDismiss = PendingIntent.getBroadcast(
-                context.applicationContext, notificationId, intentDismiss,
+                context.applicationContext,
+                notificationId,
+                intentDismiss,
                 PendingIntent.FLAG_IMMUTABLE
             )
 
-            //Pause Notification
+            // Pause Notification
             val intentPause = Intent(context, NotificationReceiver::class.java).apply {
                 action = NotificationConst.ACTION_NOTIFICATION_PAUSE_CLICK
             }
             intentPause.putExtra(NotificationConst.KEY_NOTIFICATION_ID, notificationId)
             intentPause.putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
             val pendingIntentPause = PendingIntent.getBroadcast(
-                context.applicationContext, notificationId, intentPause,
+                context.applicationContext,
+                notificationId,
+                intentPause,
                 PendingIntent.FLAG_IMMUTABLE
             )
 
-            //Cancel Notification
+            // Cancel Notification
             val intentCancel = Intent(context, NotificationReceiver::class.java).apply {
                 action = NotificationConst.ACTION_NOTIFICATION_CANCEL_CLICK
             }
             intentCancel.putExtra(NotificationConst.KEY_NOTIFICATION_ID, notificationId)
             intentCancel.putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
             val pendingIntentCancel = PendingIntent.getBroadcast(
-                context.applicationContext, notificationId, intentCancel,
+                context.applicationContext,
+                notificationId,
+                intentCancel,
                 PendingIntent.FLAG_IMMUTABLE
             )
 
@@ -136,10 +130,36 @@ internal class DownloadNotificationManager(
         return foregroundInfo
     }
 
+    private fun setContentTextNotification(
+        speedInBPerMs: Float,
+        progress: Int,
+        length: Long
+    ): String {
+        var text = ""
+        val timeLeftText = TextUtil.getTimeLeftText(speedInBPerMs, progress, length)
+        val speedText = TextUtil.getSpeedText(speedInBPerMs)
+        val lengthText = TextUtil.getTotalLengthText(length)
+        if (notificationConfig.showTime) text += timeLeftText
+
+        if ((notificationConfig.showTime && timeLeftText.isNotEmpty())
+            && (notificationConfig.showSpeed || notificationConfig.showSize)
+        ) text += ", "
+
+        if (notificationConfig.showSpeed) text += speedText
+
+        if (notificationConfig.showSpeed && notificationConfig.showSize) text += ", "
+
+        if (notificationConfig.showSize) text += "total: $lengthText"
+        return text
+    }
+
     fun sendDownloadSuccessNotification(totalLength: Long) {
         context.applicationContext.sendBroadcast(
             Intent(context, NotificationReceiver::class.java).apply {
-                putExtra(NotificationConst.KEY_NOTIFICATION_CHANNEL_NAME, notificationConfig.smallIcon)
+                putExtra(
+                    NotificationConst.KEY_NOTIFICATION_CHANNEL_NAME,
+                    notificationConfig.smallIcon
+                )
                 putExtra(
                     NotificationConst.KEY_NOTIFICATION_CHANNEL_IMPORTANCE,
                     notificationConfig.importance
@@ -148,7 +168,10 @@ internal class DownloadNotificationManager(
                     NotificationConst.KEY_NOTIFICATION_CHANNEL_DESCRIPTION,
                     notificationConfig.channelDescription
                 )
-                putExtra(NotificationConst.KEY_NOTIFICATION_SMALL_ICON, notificationConfig.smallIcon)
+                putExtra(
+                    NotificationConst.KEY_NOTIFICATION_SMALL_ICON,
+                    notificationConfig.smallIcon
+                )
                 putExtra(DownloadConst.KEY_FILE_NAME, fileName)
                 putExtra(DownloadConst.KEY_LENGTH, totalLength)
                 putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
@@ -161,7 +184,10 @@ internal class DownloadNotificationManager(
     fun sendDownloadFailedNotification() {
         context.applicationContext.sendBroadcast(
             Intent(context, NotificationReceiver::class.java).apply {
-                putExtra(NotificationConst.KEY_NOTIFICATION_CHANNEL_NAME, notificationConfig.channelName)
+                putExtra(
+                    NotificationConst.KEY_NOTIFICATION_CHANNEL_NAME,
+                    notificationConfig.channelName
+                )
                 putExtra(
                     NotificationConst.KEY_NOTIFICATION_CHANNEL_IMPORTANCE,
                     notificationConfig.importance
@@ -170,7 +196,10 @@ internal class DownloadNotificationManager(
                     NotificationConst.KEY_NOTIFICATION_CHANNEL_DESCRIPTION,
                     notificationConfig.channelDescription
                 )
-                putExtra(NotificationConst.KEY_NOTIFICATION_SMALL_ICON, notificationConfig.smallIcon)
+                putExtra(
+                    NotificationConst.KEY_NOTIFICATION_SMALL_ICON,
+                    notificationConfig.smallIcon
+                )
                 putExtra(DownloadConst.KEY_FILE_NAME, fileName)
                 putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
                 putExtra(NotificationConst.KEY_NOTIFICATION_ID, notificationId)
@@ -182,7 +211,10 @@ internal class DownloadNotificationManager(
     fun sendDownloadCancelledNotification() {
         context.applicationContext.sendBroadcast(
             Intent(context, NotificationReceiver::class.java).apply {
-                putExtra(NotificationConst.KEY_NOTIFICATION_CHANNEL_NAME, notificationConfig.channelName)
+                putExtra(
+                    NotificationConst.KEY_NOTIFICATION_CHANNEL_NAME,
+                    notificationConfig.channelName
+                )
                 putExtra(
                     NotificationConst.KEY_NOTIFICATION_CHANNEL_IMPORTANCE,
                     notificationConfig.importance
@@ -191,7 +223,10 @@ internal class DownloadNotificationManager(
                     NotificationConst.KEY_NOTIFICATION_CHANNEL_DESCRIPTION,
                     notificationConfig.channelDescription
                 )
-                putExtra(NotificationConst.KEY_NOTIFICATION_SMALL_ICON, notificationConfig.smallIcon)
+                putExtra(
+                    NotificationConst.KEY_NOTIFICATION_SMALL_ICON,
+                    notificationConfig.smallIcon
+                )
                 putExtra(DownloadConst.KEY_FILE_NAME, fileName)
                 putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
                 putExtra(NotificationConst.KEY_NOTIFICATION_ID, notificationId)
@@ -203,7 +238,10 @@ internal class DownloadNotificationManager(
     fun sendDownloadPausedNotification() {
         context.applicationContext.sendBroadcast(
             Intent(context, NotificationReceiver::class.java).apply {
-                putExtra(NotificationConst.KEY_NOTIFICATION_CHANNEL_NAME, notificationConfig.channelName)
+                putExtra(
+                    NotificationConst.KEY_NOTIFICATION_CHANNEL_NAME,
+                    notificationConfig.channelName
+                )
                 putExtra(
                     NotificationConst.KEY_NOTIFICATION_CHANNEL_IMPORTANCE,
                     notificationConfig.importance
@@ -212,7 +250,10 @@ internal class DownloadNotificationManager(
                     NotificationConst.KEY_NOTIFICATION_CHANNEL_DESCRIPTION,
                     notificationConfig.channelDescription
                 )
-                putExtra(NotificationConst.KEY_NOTIFICATION_SMALL_ICON, notificationConfig.smallIcon)
+                putExtra(
+                    NotificationConst.KEY_NOTIFICATION_SMALL_ICON,
+                    notificationConfig.smallIcon
+                )
                 putExtra(DownloadConst.KEY_FILE_NAME, fileName)
                 putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
                 putExtra(NotificationConst.KEY_NOTIFICATION_ID, notificationId)
@@ -233,5 +274,4 @@ internal class DownloadNotificationManager(
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
 
-    fun getNotificationId(): Int = notificationId
 }

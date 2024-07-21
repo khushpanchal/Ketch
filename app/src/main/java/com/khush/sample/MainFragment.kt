@@ -26,7 +26,6 @@ import com.khush.sample.databinding.FragmentMainBinding
 import com.khush.sample.databinding.ItemFileBinding
 import kotlinx.coroutines.launch
 import java.io.File
-import java.util.UUID
 
 
 class MainFragment : Fragment() {
@@ -97,7 +96,9 @@ class MainFragment : Fragment() {
                 Ketch.getInstance(context!!).download(
                     url = downloadItem.url,
                     fileName = downloadItem.fileName,
-                    tag = downloadItem.tag
+                    path = downloadItem.path,
+                    tag = downloadItem.tag,
+                    metaData = downloadItem.metaData
                 )
             }
 
@@ -125,46 +126,115 @@ class MainFragment : Fragment() {
                 DividerItemDecoration.VERTICAL
             )
         )
-        fragmentMainBinding.button.setOnClickListener {
-            val url = fragmentMainBinding.editTextUrl.text.toString()
-            val fileName = fragmentMainBinding.editTextName.text.toString()
-            if (url.isEmpty()) {
-                Toast.makeText(this.context, "Enter Valid URL", Toast.LENGTH_SHORT).show()
-            } else if (fileName.isEmpty()) {
-                Toast.makeText(this.context, "Enter Valid File name", Toast.LENGTH_SHORT).show()
-            } else {
-                Ketch.getInstance(requireContext()).download(url = url, fileName = fileName)
-            }
+
+        fragmentMainBinding.bt1.text = "Video 1"
+        fragmentMainBinding.bt1.setOnClickListener {
+            Ketch.getInstance(requireContext()).download(
+                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Video_1.mp4",
+                tag = "Video",
+                metaData = "158"
+            )
         }
 
-        val testList = listOf(DownloadModel(
-            url = "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_30mb.mp4",
-            path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-            fileName = "Sample_Video.mp4",
-            tag = "my downloads",
-            id = -1,
-            status = Status.DEFAULT,
-            timeQueued = 0L,
-            progress = 0,
-            total = 0L,
-            speedInBytePerMs = 0f,
-            headers = hashMapOf(),
-            uuid = UUID.randomUUID(),
-            eTag = ""
-        ))
+        fragmentMainBinding.bt2.text = "Video 2"
+        fragmentMainBinding.bt2.setOnClickListener {
+            Ketch.getInstance(requireContext()).download(
+                url = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Video_2.mp4",
+                tag = "Video",
+                metaData = "169"
+            )
+        }
 
-        adapter.submitList(testList)
+        fragmentMainBinding.bt3.text = "Video 3"
+        fragmentMainBinding.bt3.setOnClickListener {
+            Ketch.getInstance(requireContext()).download(
+                url = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Video_3.mp4",
+                tag = "Video",
+                metaData = "48"
+            )
+        }
 
+        fragmentMainBinding.bt4.text = "Image 1"
+        fragmentMainBinding.bt4.setOnClickListener {
+            Ketch.getInstance(requireContext()).download(
+                url = "https://picsum.photos/200/300",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Image_1.jpg",
+                tag = "Document",
+                metaData = "1"
+            )
+        }
+
+        fragmentMainBinding.bt5.text = "Pdf 1"
+        fragmentMainBinding.bt5.setOnClickListener {
+            Ketch.getInstance(requireContext()).download(
+                url = "https://sample-videos.com/pdf/Sample-pdf-5mb.pdf",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Pdf_1.pdf",
+                tag = "Document",
+                metaData = "5"
+            )
+        }
+
+        fragmentMainBinding.bt6.text = "Multiple"
+        fragmentMainBinding.bt6.setOnClickListener {
+            Ketch.getInstance(requireContext()).download(
+                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Video_1.mp4",
+                tag = "Video",
+                metaData = "158"
+            )
+            Ketch.getInstance(requireContext()).download(
+                url = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Video_2.mp4",
+                tag = "Video",
+                metaData = "169"
+            )
+            Ketch.getInstance(requireContext()).download(
+                url = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Video_3.mp4",
+                tag = "Video",
+                metaData = "48"
+            )
+            Ketch.getInstance(requireContext()).download(
+                url = "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_30mb.mp4",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Video_4.mp4",
+                tag = "Video",
+                metaData = "30"
+            )
+            Ketch.getInstance(requireContext()).download(
+                url = "https://picsum.photos/200/300",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Image_1.jpg",
+                tag = "Document",
+                metaData = "1"
+            )
+            Ketch.getInstance(requireContext()).download(
+                url = "https://sample-videos.com/pdf/Sample-pdf-5mb.pdf",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Pdf_1.pdf",
+                tag = "Document",
+                metaData = "5"
+            )
+        }
     }
 
     private fun observer() {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 Ketch.getInstance(requireContext()).observeDownloads()
-                    .collect {//observe from viewModel to survive configuration change
-                        if(it.isNotEmpty()) {
-                            adapter.submitList(it)
-                        }
+                    .collect {
+                        adapter.submitList(it)
                     }
             }
         }

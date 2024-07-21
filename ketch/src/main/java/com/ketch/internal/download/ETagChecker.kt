@@ -7,9 +7,15 @@ internal class ETagChecker(
     private val url: String,
     private val downloadService: DownloadService
 ) {
-    suspend fun getETag(): String? {
-        val response = downloadService.getHeadersOnly(url)
-        return response.headers().get(DownloadConst.ETAG_HEADER)
+    suspend fun getETag(
+        headers: HashMap<String, String> = hashMapOf()
+    ): String? {
+        return try {
+            val response = downloadService.getHeadersOnly(url, headers)
+            response.headers().get(DownloadConst.ETAG_HEADER)
+        } catch (e: Exception) {
+            ""
+        }
     }
 
 }

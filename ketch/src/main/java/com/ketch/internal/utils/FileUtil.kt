@@ -3,9 +3,7 @@ package com.ketch.internal.utils
 import android.os.Environment
 import android.webkit.URLUtil
 import java.io.File
-import java.io.UnsupportedEncodingException
 import java.security.MessageDigest
-import java.security.NoSuchAlgorithmException
 import java.util.UUID
 import kotlin.experimental.and
 
@@ -24,10 +22,8 @@ internal object FileUtil {
         val string = url + File.separator + dirPath + File.separator + fileName
         val hash: ByteArray = try {
             MessageDigest.getInstance("MD5").digest(string.toByteArray(charset("UTF-8")))
-        } catch (e: NoSuchAlgorithmException) {
-            throw RuntimeException("NoSuchAlgorithmException", e)
-        } catch (e: UnsupportedEncodingException) {
-            throw RuntimeException("UnsupportedEncodingException", e)
+        } catch (e: Exception) {
+            return getUniqueIdFallback(url, dirPath, fileName)
         }
         val hex = StringBuilder(hash.size * 2)
         for (b in hash) {
@@ -35,6 +31,10 @@ internal object FileUtil {
             hex.append(Integer.toHexString((b and 0xFF.toByte()).toInt()))
         }
         return hex.toString().hashCode()
+    }
+
+    private fun getUniqueIdFallback(url: String, dirPath: String, fileName: String): Int {
+        return (url.hashCode() * 31 + dirPath.hashCode()) * 31 + fileName.hashCode()
     }
 
     fun deleteFileIfExists(path: String, name: String) {

@@ -5,7 +5,6 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.ketch.Status
-import com.ketch.internal.utils.UserAction
 import com.ketch.internal.database.DatabaseInstance
 import com.ketch.internal.database.DownloadEntity
 import com.ketch.internal.download.DownloadTask
@@ -15,10 +14,11 @@ import com.ketch.internal.notification.DownloadNotificationManager
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.ExceptionConst
 import com.ketch.internal.utils.FileUtil
-import com.ketch.internal.utils.NotificationHelper
-import com.ketch.internal.utils.UserActionHelper
+import com.ketch.internal.utils.UserAction
 import com.ketch.internal.utils.WorkUtil
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 
 internal class DownloadWorker(
     private val context: Context,
@@ -27,35 +27,42 @@ internal class DownloadWorker(
     CoroutineWorker(context, workerParameters) {
 
     private var downloadNotificationManager: DownloadNotificationManager? = null
-    private val dbHelper = DatabaseInstance.getDbHelper(context)
+    private val dbHelper = DatabaseInstance.getInstance(context).downloadDao()
 
     override suspend fun doWork(): Result {
 
-        val workInputData =
-            WorkUtil.fromJson(
-                inputData.getString(DownloadConst.KEY_WORK_INPUT_DATA)
+        val downloadRequest =
+            WorkUtil.jsonToDownloadRequest(
+                inputData.getString(DownloadConst.KEY_DOWNLOAD_REQUEST)
                     ?: return Result.failure(
                         workDataOf(ExceptionConst.KEY_EXCEPTION to ExceptionConst.EXCEPTION_FAILED_DESERIALIZE)
                     )
             )
 
-        val id = workInputData.id
-        val url = workInputData.url
-        val dirPath = workInputData.path
-        val fileName = workInputData.fileName
-        val downloadConfig = workInputData.downloadConfig
-        val notificationConfig = workInputData.notificationConfig
-        val headers = workInputData.headers
-        val timeQueued = workInputData.timeQueued
-        val tag = workInputData.tag
+        val downloadConfig =
+            WorkUtil.jsonToDownloadConfig(
+                inputData.getString(DownloadConst.KEY_DOWNLOAD_CONFIG) ?: ""
+            )
+
+        val notificationConfig =
+            WorkUtil.jsonToNotificationConfig(
+                inputData.getString(DownloadConst.KEY_NOTIFICATION_CONFIG) ?: ""
+            )
+
+        val id = downloadRequest.id
+        val url = downloadRequest.url
+        val dirPath = downloadRequest.path
+        val fileName = downloadRequest.fileName
+        val headers = downloadRequest.headers
+        val tag = downloadRequest.tag
+        val metaData = downloadRequest.metaData
 
         if (notificationConfig.enabled) {
             downloadNotificationManager = DownloadNotificationManager(
                 context = context,
                 notificationConfig = notificationConfig,
                 requestId = id,
-                fileName = fileName,
-                workId = getId()
+                fileName = fileName
             )
         }
 
@@ -70,24 +77,37 @@ internal class DownloadWorker(
                     it
                 )
             }
-
-            val latestETag = ETagChecker(workInputData.url, downloadService).getETag() ?: ""
-            val downloadEntity = dbHelper.find(workInputData.id)
-            if(downloadEntity == null) {
+            val latestETag =
+                ETagChecker(downloadRequest.url, downloadService).getETag(headers) ?: ""
+            val downloadEntity = dbHelper.find(downloadRequest.id)
+            if (downloadEntity == null) {
                 dbHelper.insert(
                     DownloadEntity(
-                        id, url, dirPath, fileName, 0, 0,
-                        uuid = getId().toString(), timeQueued = timeQueued, tag = tag,
-                        headersJson = WorkUtil.hashMapToJson(headers), eTag = latestETag, lastModified = System.currentTimeMillis(),
-                        status = Status.QUEUED.toString()
+                        url = url,
+                        path = dirPath,
+                        fileName = fileName,
+                        tag = tag,
+                        id = id,
+                        headersJson = WorkUtil.hashMapToJson(headers),
+                        timeQueued = System.currentTimeMillis(),
+                        status = Status.QUEUED.toString(),
+                        uuid = getId().toString(),
+                        eTag = latestETag,
+                        lastModified = System.currentTimeMillis(),
+                        userAction = UserAction.START.toString(),
+                        metaData = metaData
                     )
                 )
+                FileUtil.deleteFileIfExists(path = dirPath, name = fileName)
             } else {
                 val existingETag = downloadEntity.eTag
-                if(latestETag != existingETag) {
+                if (latestETag != existingETag) {
                     FileUtil.deleteFileIfExists(path = dirPath, name = fileName)
+                    dbHelper.updateETag(id, latestETag, System.currentTimeMillis())
                 }
             }
+
+            var progressPercentage = 0
 
             val totalLength = DownloadTask(
                 url = url,
@@ -96,75 +116,87 @@ internal class DownloadWorker(
                 downloadService = downloadService
             ).download(
                 headers = headers,
-                onStart = {
-                    dbHelper.update(
-                        DownloadEntity(
-                            id, url, dirPath, fileName, it, 0,
-                            uuid = getId().toString(), timeQueued = timeQueued, tag = tag,
-                            headersJson = WorkUtil.hashMapToJson(headers), eTag = latestETag, status = Status.STARTED.toString(),
-                            lastModified = System.currentTimeMillis()
-                        )
-                    )
-                    setProgressAsync(
+                onStart = { length ->
+                    dbHelper.updateTotalLength(id, length, System.currentTimeMillis())
+                    dbHelper.updateStatus(id, Status.STARTED.toString(), System.currentTimeMillis())
+
+                    setProgress(
                         workDataOf(
-                            DownloadConst.KEY_STATE to DownloadConst.STARTED,
-                            DownloadConst.KEY_ID to id,
-                            DownloadConst.KEY_LENGTH to it,
-                            DownloadConst.KEY_E_TAG to latestETag
+                            DownloadConst.KEY_STATE to DownloadConst.STARTED
                         )
                     )
                 },
-                onProgress = { progress, length, speed ->
-                    // todo Update DB every few kb
-                    dbHelper.updateStatus(id, Status.PROGRESS.toString(), System.currentTimeMillis())
-                    dbHelper.updateProgress(id, (length*progress)/100, System.currentTimeMillis())
+                onProgress = { downloadedBytes, length, speed ->
 
-                    setProgressAsync(
+                    val progress = ((downloadedBytes * 100) / length).toInt()
+                    if (progressPercentage != progress) {
+
+                        progressPercentage = progress
+
+                        dbHelper.updateStatus(
+                            id,
+                            Status.PROGRESS.toString(),
+                            System.currentTimeMillis()
+                        )
+                        dbHelper.updateProgress(
+                            id,
+                            downloadedBytes,
+                            System.currentTimeMillis()
+                        )
+                        dbHelper.updateSpeed(
+                            id,
+                            speed,
+                            System.currentTimeMillis()
+                        )
+
+                    }
+
+                    setProgress(
                         workDataOf(
                             DownloadConst.KEY_STATE to DownloadConst.PROGRESS,
-                            DownloadConst.KEY_ID to id,
-                            DownloadConst.KEY_PROGRESS to progress,
-                            DownloadConst.KEY_LENGTH to length,
-                            DownloadConst.KEY_SPEED to speed,
-                            DownloadConst.KEY_E_TAG to latestETag
+                            DownloadConst.KEY_PROGRESS to progress
                         )
                     )
-                    if (!NotificationHelper.isDismissedNotification(downloadNotificationManager?.getNotificationId())) {
-                        downloadNotificationManager?.sendUpdateNotification(
-                            progress = progress,
-                            speedInBPerMs = speed,
-                            length = length,
-                            update = true
-                        )?.let {
-                            setForeground(
-                                it
-                            )
-                        }
+                    downloadNotificationManager?.sendUpdateNotification(
+                        progress = progress,
+                        speedInBPerMs = speed,
+                        length = length,
+                        update = true
+                    )?.let {
+                        setForeground(
+                            it
+                        )
                     }
                 }
             )
+            dbHelper.updateTotalLength(id, totalLength, System.currentTimeMillis())
+            dbHelper.updateStatus(id, Status.SUCCESS.toString(), System.currentTimeMillis())
             downloadNotificationManager?.sendDownloadSuccessNotification(totalLength)
             Result.success()
         } catch (e: Exception) {
-            if (e is CancellationException) {
-                if(UserActionHelper.getUserAction(id) == UserAction.PAUSE.toString()) {
-                    dbHelper.updateStatus(
-                        id,
-                        Status.PAUSED.toString(),
-                        System.currentTimeMillis()
-                    )
-                    downloadNotificationManager?.sendDownloadPausedNotification()
+            GlobalScope.launch {
+                if (e is CancellationException) {
+                    if (dbHelper.find(id)?.userAction == UserAction.PAUSE.toString()) {
+                        dbHelper.updateStatus(
+                            id,
+                            Status.PAUSED.toString(),
+                            System.currentTimeMillis()
+                        )
+                        downloadNotificationManager?.sendDownloadPausedNotification()
+                    } else {
+                        dbHelper.updateStatus(
+                            id,
+                            Status.CANCELLED.toString(),
+                            System.currentTimeMillis()
+                        )
+                        FileUtil.deleteFileIfExists(dirPath, fileName)
+                        downloadNotificationManager?.sendDownloadCancelledNotification()
+                    }
                 } else {
-                    dbHelper.updateStatus(
-                        id,
-                        Status.PAUSED.toString(),
-                        System.currentTimeMillis()
-                    )
-                    downloadNotificationManager?.sendDownloadCancelledNotification()
+                    dbHelper.updateStatus(id, Status.FAILED.toString(), System.currentTimeMillis())
+                    dbHelper.updateFailureReason(id, e.message ?: "", System.currentTimeMillis())
+                    downloadNotificationManager?.sendDownloadFailedNotification()
                 }
-            } else {
-                dbHelper.updateStatus(id, Status.FAILED.toString(), System.currentTimeMillis())
-                downloadNotificationManager?.sendDownloadFailedNotification()
             }
             Result.failure(
                 workDataOf(ExceptionConst.KEY_EXCEPTION to e.message)
@@ -174,4 +206,3 @@ internal class DownloadWorker(
     }
 
 }
-

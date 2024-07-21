@@ -14,64 +14,59 @@ import androidx.core.app.NotificationManagerCompat
 import com.ketch.Ketch
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.NotificationConst
-import com.ketch.internal.utils.NotificationHelper
 import com.ketch.internal.utils.TextUtil
 
 internal class NotificationReceiver : BroadcastReceiver() {
 
     @SuppressLint("MissingPermission")
     override fun onReceive(context: Context?, intent: Intent?) {
-        if (intent?.action == NotificationConst.ACTION_NOTIFICATION_DISMISSED) {
-            val dismissedId = intent.extras?.getInt(NotificationConst.KEY_NOTIFICATION_ID)
-            if (dismissedId != null) {
-                NotificationHelper.addToDismissedNotificationIds(dismissedId)
-            }
-            return
-        }
 
         if (context == null || intent == null) return
 
-        if(intent.action == NotificationConst.ACTION_NOTIFICATION_RESUME_CLICK) {
+        if (intent.action == NotificationConst.ACTION_NOTIFICATION_RESUME_CLICK) {
             val requestId =
                 intent.extras?.getInt(DownloadConst.KEY_REQUEST_ID) ?: return
             val nId = intent.extras?.getInt(NotificationConst.KEY_NOTIFICATION_ID)
-            if(nId != null) NotificationManagerCompat.from(context).cancel(nId)
+            if (nId != null) NotificationManagerCompat.from(context).cancel(nId)
             Ketch.getInstance(context).resume(requestId)
             return
         }
 
-        if(intent.action == NotificationConst.ACTION_NOTIFICATION_RETRY_CLICK) {
+        if (intent.action == NotificationConst.ACTION_NOTIFICATION_RETRY_CLICK) {
             val requestId =
                 intent.extras?.getInt(DownloadConst.KEY_REQUEST_ID) ?: return
             val nId = intent.extras?.getInt(NotificationConst.KEY_NOTIFICATION_ID)
-            if(nId != null) NotificationManagerCompat.from(context).cancel(nId)
+            if (nId != null) NotificationManagerCompat.from(context).cancel(nId)
             Ketch.getInstance(context).retry(requestId)
             return
         }
 
-        if(intent.action == NotificationConst.ACTION_NOTIFICATION_PAUSE_CLICK) {
+        if (intent.action == NotificationConst.ACTION_NOTIFICATION_PAUSE_CLICK) {
             val requestId =
                 intent.extras?.getInt(DownloadConst.KEY_REQUEST_ID) ?: return
             val nId = intent.extras?.getInt(NotificationConst.KEY_NOTIFICATION_ID)
-            if(nId != null) NotificationManagerCompat.from(context).cancel(nId)
+            if (nId != null) NotificationManagerCompat.from(context).cancel(nId)
             Ketch.getInstance(context).pause(requestId)
             return
         }
 
-        if(intent.action == NotificationConst.ACTION_NOTIFICATION_CANCEL_CLICK) {
+        if (intent.action == NotificationConst.ACTION_NOTIFICATION_CANCEL_CLICK) {
             val requestId =
                 intent.extras?.getInt(DownloadConst.KEY_REQUEST_ID) ?: return
             val nId = intent.extras?.getInt(NotificationConst.KEY_NOTIFICATION_ID)
-            if(nId != null) NotificationManagerCompat.from(context).cancel(nId)
+            if (nId != null) NotificationManagerCompat.from(context).cancel(nId)
             Ketch.getInstance(context).cancel(requestId)
             return
         }
 
-        if (intent.action == NotificationConst.ACTION_DOWNLOAD_COMPLETED
-            || intent.action == NotificationConst.ACTION_DOWNLOAD_FAILED
-            || intent.action == NotificationConst.ACTION_DOWNLOAD_CANCELLED
-            || intent.action == NotificationConst.ACTION_DOWNLOAD_PAUSED
-        ) {
+        val notificationActionList = listOf (
+            NotificationConst.ACTION_DOWNLOAD_COMPLETED,
+            NotificationConst.ACTION_DOWNLOAD_FAILED,
+            NotificationConst.ACTION_DOWNLOAD_CANCELLED,
+            NotificationConst.ACTION_DOWNLOAD_PAUSED
+        )
+
+        if (intent.action in notificationActionList) {
             val notificationChannelName =
                 intent.extras?.getString(NotificationConst.KEY_NOTIFICATION_CHANNEL_NAME)
                     ?: NotificationConst.DEFAULT_VALUE_NOTIFICATION_CHANNEL_NAME
@@ -90,7 +85,7 @@ internal class NotificationReceiver : BroadcastReceiver() {
             val totalLength = intent.extras?.getLong(DownloadConst.KEY_LENGTH)
                 ?: DownloadConst.DEFAULT_VALUE_LENGTH
 
-            val notificationId = ((requestId + 1 + System.currentTimeMillis()) % Int.MAX_VALUE).toInt() //Unique
+            val notificationId = requestId + 1
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 createNotificationChannel(
@@ -112,14 +107,15 @@ internal class NotificationReceiver : BroadcastReceiver() {
                     PendingIntent.FLAG_IMMUTABLE
                 )
 
-
             val intentResume = Intent(context, NotificationReceiver::class.java).apply {
                 action = NotificationConst.ACTION_NOTIFICATION_RESUME_CLICK
             }
             intentResume.putExtra(NotificationConst.KEY_NOTIFICATION_ID, notificationId)
             intentResume.putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
             val pendingIntentResume = PendingIntent.getBroadcast(
-                context.applicationContext, notificationId, intentResume,
+                context.applicationContext,
+                notificationId,
+                intentResume,
                 PendingIntent.FLAG_IMMUTABLE
             )
 
@@ -155,11 +151,19 @@ internal class NotificationReceiver : BroadcastReceiver() {
                     .setOngoing(false)
                     .setAutoCancel(true)
 
-            if(intent.action == NotificationConst.ACTION_DOWNLOAD_FAILED) {
-                notificationBuilder = notificationBuilder.addAction(-1, NotificationConst.RETRY_BUTTON_TEXT, pendingIntentRetry)
+            if (intent.action == NotificationConst.ACTION_DOWNLOAD_FAILED) {
+                notificationBuilder = notificationBuilder.addAction(
+                    -1,
+                    NotificationConst.RETRY_BUTTON_TEXT,
+                    pendingIntentRetry
+                )
             }
-            if(intent.action == NotificationConst.ACTION_DOWNLOAD_PAUSED) {
-                notificationBuilder = notificationBuilder.addAction(-1, NotificationConst.RESUME_BUTTON_TEXT, pendingIntentResume)
+            if (intent.action == NotificationConst.ACTION_DOWNLOAD_PAUSED) {
+                notificationBuilder = notificationBuilder.addAction(
+                    -1,
+                    NotificationConst.RESUME_BUTTON_TEXT,
+                    pendingIntentResume
+                )
             }
 
             val notification = notificationBuilder

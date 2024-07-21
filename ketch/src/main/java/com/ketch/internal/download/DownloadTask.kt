@@ -1,6 +1,8 @@
 package com.ketch.internal.download
 
 import com.ketch.internal.network.DownloadService
+import com.ketch.internal.utils.DownloadConst
+import com.ketch.internal.utils.FileUtil
 import java.io.File
 import java.io.FileOutputStream
 
@@ -14,33 +16,53 @@ internal class DownloadTask(
     suspend fun download(
         headers: MutableMap<String, String> = mutableMapOf(),
         onStart: suspend (Long) -> Unit,
-        onProgress: suspend (Int, Long, Float) -> Unit
+        onProgress: suspend (Long, Long, Float) -> Unit
     ): Long {
 
         var rangeStart = 0L
         val file = File(path, fileName)
 
-        val destinationFile = File(path, fileName)
-
-        val out = FileOutputStream(destinationFile, true)
-        if(file.exists()) {
+        if (file.exists()) {
             rangeStart = file.length()
         }
 
-        if(rangeStart != 0L) {
-            headers["Range"] = "bytes=${rangeStart}-"
+        if (rangeStart != 0L) {
+            headers[DownloadConst.RANGE_HEADER] = "bytes=${rangeStart}-"
         }
 
-        val responseBody = downloadService.getUrl(url, headers)
+        var response = downloadService.getUrl(url, headers)
+        if (response.code() == DownloadConst.HTTP_RANGE_NOT_SATISFY || isRedirection(
+                response.raw().request().url().toString()
+            )
+        ) {
+            FileUtil.deleteFileIfExists(path, fileName)
+            headers.remove(DownloadConst.RANGE_HEADER)
+            rangeStart = 0
+            response = downloadService.getUrl(url, headers)
+        }
 
-        var totalBytes: Long
+
+        if (response.code() !in 200..299) {
+            throw RuntimeException("Something went wrong, response code: ${response.code()}")
+        }
+
+        val responseBody = response.body()
+            ?: throw RuntimeException("Something went wrong, response code: ${response.code()}, response body is null")
+
+        var totalBytes = responseBody.contentLength()
+
+        if (totalBytes < 0) throw RuntimeException("Content Length is wrong: $totalBytes")
+
+        var progressBytes = 0L
+
+        totalBytes += rangeStart
+
+        val out = FileOutputStream(file, true)
 
         responseBody.byteStream().use { inputStream ->
             out.use { outputStream ->
-                var progressBytes = 0L
-                totalBytes = responseBody.contentLength() + rangeStart
 
-                if(rangeStart != 0L) {
+                if (rangeStart != 0L) {
                     progressBytes = rangeStart
                 }
 
@@ -58,25 +80,28 @@ internal class DownloadTask(
                     progressBytes += bytes
                     tempBytes += bytes
                     bytes = inputStream.read(buffer)
-
                     val finalTime = System.currentTimeMillis()
-
-                    if (finalTime - progressInvokeTime >= 500) {
+                    if (finalTime - progressInvokeTime >= 1500) {
 
                         speed = tempBytes.toFloat() / ((finalTime - progressInvokeTime).toFloat())
                         tempBytes = 0L
                         progressInvokeTime = System.currentTimeMillis()
+                        if (progressBytes > totalBytes) progressBytes = 100
                         onProgress.invoke(
-                            ((progressBytes * 100) / totalBytes).toInt(),
+                            progressBytes,
                             totalBytes,
                             speed
                         )
                     }
                 }
-                onProgress.invoke(100, totalBytes, 0F)
+                onProgress.invoke(totalBytes, totalBytes, 0F)
             }
         }
 
         return totalBytes
+    }
+
+    private fun isRedirection(requestUrl: String): Boolean {
+        return requestUrl != url
     }
 }
