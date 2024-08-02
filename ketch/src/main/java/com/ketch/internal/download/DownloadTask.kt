@@ -5,6 +5,7 @@ import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.FileUtil
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 
 internal class DownloadTask(
     private var url: String,
@@ -12,6 +13,12 @@ internal class DownloadTask(
     private var fileName: String,
     private val downloadService: DownloadService,
 ) {
+
+    companion object {
+        private const val VALUE_200 = 200
+        private const val VALUE_299 = 299
+        private const val TIME_TO_TRIGGER_PROGRESS = 1500
+    }
 
     suspend fun download(
         headers: MutableMap<String, String> = mutableMapOf(),
@@ -27,7 +34,7 @@ internal class DownloadTask(
         }
 
         if (rangeStart != 0L) {
-            headers[DownloadConst.RANGE_HEADER] = "bytes=${rangeStart}-"
+            headers[DownloadConst.RANGE_HEADER] = "bytes=$rangeStart-"
         }
 
         var response = downloadService.getUrl(url, headers)
@@ -41,17 +48,19 @@ internal class DownloadTask(
             response = downloadService.getUrl(url, headers)
         }
 
-
-        if (response.code() !in 200..299) {
-            throw RuntimeException("Something went wrong, response code: ${response.code()}")
-        }
-
         val responseBody = response.body()
-            ?: throw RuntimeException("Something went wrong, response code: ${response.code()}, response body is null")
+
+        if (response.code() !in VALUE_200..VALUE_299 ||
+            responseBody == null
+        ) {
+            throw IOException(
+                "Something went wrong, response code: ${response.code()}, responseBody null: ${responseBody == null}"
+            )
+        }
 
         var totalBytes = responseBody.contentLength()
 
-        if (totalBytes < 0) throw RuntimeException("Content Length is wrong: $totalBytes")
+        if (totalBytes < 0) throw IOException("Content Length is wrong: $totalBytes")
 
         var progressBytes = 0L
 
@@ -81,12 +90,12 @@ internal class DownloadTask(
                     tempBytes += bytes
                     bytes = inputStream.read(buffer)
                     val finalTime = System.currentTimeMillis()
-                    if (finalTime - progressInvokeTime >= 1500) {
+                    if (finalTime - progressInvokeTime >= TIME_TO_TRIGGER_PROGRESS) {
 
                         speed = tempBytes.toFloat() / ((finalTime - progressInvokeTime).toFloat())
                         tempBytes = 0L
                         progressInvokeTime = System.currentTimeMillis()
-                        if (progressBytes > totalBytes) progressBytes = 100
+                        if (progressBytes > totalBytes) progressBytes = totalBytes
                         onProgress.invoke(
                             progressBytes,
                             totalBytes,

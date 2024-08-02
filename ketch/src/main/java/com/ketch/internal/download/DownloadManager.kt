@@ -17,78 +17,115 @@ import com.ketch.internal.database.DownloadEntity
 import com.ketch.internal.notification.DownloadNotificationManager
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.FileUtil.deleteFileIfExists
-import com.ketch.internal.utils.NotificationConst
 import com.ketch.internal.utils.UserAction
 import com.ketch.internal.utils.WorkUtil
+import com.ketch.internal.utils.WorkUtil.removeNotification
 import com.ketch.internal.utils.WorkUtil.toJson
+import com.ketch.internal.utils.toDownloadModel
 import com.ketch.internal.worker.DownloadWorker
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.flow.transform
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.util.UUID
 
 internal class DownloadManager(
     private val context: Context,
-    private val dbHelper: DownloadDao,
-    private val workManager: WorkManager
+    private val downloadDao: DownloadDao,
+    private val workManager: WorkManager,
+    private val downloadConfig: DownloadConfig,
+    private val notificationConfig: NotificationConfig,
+    private val logger: Logger
 ) {
 
-    private var logger: Logger? = null
-    private var downloadConfig: DownloadConfig? = null
-    private var notificationConfig: NotificationConfig? = null
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        logger.log(
+            msg = "Exception in DownloadManager Scope: ${throwable.message}"
+        )
+    }
 
-    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob() + exceptionHandler)
 
     init {
 
         scope.launch {
+            // Observe work infos, only for logging purpose
             workManager.getWorkInfosByTagFlow(DownloadConst.TAG_DOWNLOAD).flowOn(Dispatchers.IO)
                 .collectLatest { workInfos ->
                     for (workInfo in workInfos) {
                         when (workInfo.state) {
                             WorkInfo.State.ENQUEUED -> {
                                 val downloadEntity = findDownloadEntityFromUUID(workInfo.id)
-                                logger?.log(msg = "Download Queued. FileName: ${downloadEntity?.fileName}, URL: ${downloadEntity?.url}")
+                                logger.log(
+                                    msg = "Download Queued. FileName: ${downloadEntity?.fileName}, " +
+                                            "ID: ${downloadEntity?.id}"
+                                )
                             }
 
                             WorkInfo.State.RUNNING -> {
                                 val downloadEntity = findDownloadEntityFromUUID(workInfo.id)
                                 when (workInfo.progress.getString(DownloadConst.KEY_STATE)) {
-                                    DownloadConst.STARTED -> {
-                                        logger?.log(msg = "Download Started. FileName: ${downloadEntity?.fileName}, URL: ${downloadEntity?.url}, Size in bytes: ${downloadEntity?.totalBytes}")
-                                    }
+                                    DownloadConst.STARTED ->
+                                        logger.log(
+                                            msg = "Download Started. FileName: ${downloadEntity?.fileName}, " +
+                                                    "ID: ${downloadEntity?.id}, " +
+                                                    "Size in bytes: ${downloadEntity?.totalBytes}"
+                                        )
 
-                                    DownloadConst.PROGRESS -> {
-                                        logger?.log(msg = "Download in Progress. FileName: ${downloadEntity?.fileName}, URL: ${downloadEntity?.url}, Size in bytes: ${downloadEntity?.totalBytes}, downloadPercent: ${if (downloadEntity != null && downloadEntity.totalBytes.toInt() != 0) ((downloadEntity.downloadedBytes * 100) / downloadEntity.totalBytes).toInt() else 0}%, downloadSpeedInBytesPerMilliSeconds: ${downloadEntity?.speedInBytePerMs} b/ms")
-                                    }
+                                    DownloadConst.PROGRESS ->
+                                        logger.log(
+                                            msg = "Download in Progress. FileName: ${downloadEntity?.fileName}, " +
+                                                    "ID: ${downloadEntity?.id}, " +
+                                                    "Size in bytes: ${downloadEntity?.totalBytes}, " +
+                                                    "downloadPercent: ${if (downloadEntity != null && downloadEntity.totalBytes.toInt() != 0) {
+                                                        ((downloadEntity.downloadedBytes * 100) / downloadEntity.totalBytes).toInt()
+                                                    } else {
+                                                        0
+                                                    }}%, " +
+                                                    "downloadSpeedInBytesPerMilliSeconds: ${downloadEntity?.speedInBytePerMs} b/ms"
+                                        )
+
                                 }
                             }
 
                             WorkInfo.State.SUCCEEDED -> {
                                 val downloadEntity = findDownloadEntityFromUUID(workInfo.id)
-                                logger?.log(msg = "Download Success. FileName: ${downloadEntity?.fileName}, URL: ${downloadEntity?.url}")
+                                logger.log(
+                                    msg = "Download Success. FileName: ${downloadEntity?.fileName}, " +
+                                            "ID: ${downloadEntity?.id}"
+                                )
                             }
 
                             WorkInfo.State.FAILED -> {
                                 val downloadEntity = findDownloadEntityFromUUID(workInfo.id)
-                                logger?.log(msg = "Download Failed. FileName: ${downloadEntity?.fileName}, URL: ${downloadEntity?.url}, Reason: ${downloadEntity?.failureReason}")
+                                logger.log(
+                                    msg = "Download Failed. FileName: ${downloadEntity?.fileName}, " +
+                                            "ID: ${downloadEntity?.id}, " +
+                                            "Reason: ${downloadEntity?.failureReason}"
+                                )
                             }
 
                             WorkInfo.State.CANCELLED -> {
                                 val downloadEntity = findDownloadEntityFromUUID(workInfo.id)
                                 if (downloadEntity?.userAction == UserAction.PAUSE.toString()) {
-                                    logger?.log(msg = "Download Paused. FileName: ${downloadEntity.fileName}, URL: ${downloadEntity.url}")
+                                    logger.log(
+                                        msg = "Download Paused. FileName: ${downloadEntity.fileName}, " +
+                                                "ID: ${downloadEntity.id}"
+                                    )
                                 } else if (downloadEntity?.userAction == UserAction.CANCEL.toString()) {
-                                    logger?.log(msg = "Download Cancelled. FileName: ${downloadEntity.fileName}, URL: ${downloadEntity.url}")
+                                    logger.log(
+                                        msg = "Download Cancelled. FileName: ${downloadEntity.fileName}, " +
+                                                "ID: ${downloadEntity.id}"
+                                    )
                                 }
                             }
 
-                            WorkInfo.State.BLOCKED -> {} //no use case
+                            WorkInfo.State.BLOCKED -> {} // no use case
                         }
                     }
                 }
@@ -101,13 +138,9 @@ internal class DownloadManager(
             .putString(DownloadConst.KEY_DOWNLOAD_REQUEST, downloadRequest.toJson())
             .putString(
                 DownloadConst.KEY_DOWNLOAD_CONFIG,
-                (downloadConfig ?: DownloadConfig()).toJson()
+                downloadConfig.toJson()
             )
-            .putString(
-                DownloadConst.KEY_NOTIFICATION_CONFIG,
-                (notificationConfig
-                    ?: NotificationConfig(smallIcon = NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON)).toJson()
-            )
+            .putString(DownloadConst.KEY_NOTIFICATION_CONFIG, notificationConfig.toJson())
 
         val inputData = inputDataBuilder.build()
 
@@ -121,32 +154,33 @@ internal class DownloadManager(
             .setConstraints(constraints)
             .build()
 
-        val downloadEntity = dbHelper.find(downloadRequest.id)
-        if (downloadEntity != null) {
-            dbHelper.updateUserAction(
-                downloadEntity.id,
-                UserAction.START.toString(),
-                System.currentTimeMillis()
-            )
-            if (downloadEntity.uuid != downloadWorkRequest.id.toString()) {
-                if (downloadEntity.status != Status.QUEUED.toString() &&
-                    downloadEntity.status != Status.PROGRESS.toString() &&
-                    downloadEntity.status != Status.STARTED.toString()
-                ) {
-                    dbHelper.updateUuid(
-                        downloadEntity.id,
-                        downloadWorkRequest.id.toString(),
-                        System.currentTimeMillis()
-                    )
-                    dbHelper.updateStatus(
-                        downloadEntity.id,
-                        Status.QUEUED.toString(),
-                        System.currentTimeMillis()
-                    )
-                }
+        // Checks if download id already present in database
+        if (downloadDao.find(downloadRequest.id) != null) {
+
+            downloadDao.find(downloadRequest.id)?.copy(
+                userAction = UserAction.START.toString(),
+                lastModified = System.currentTimeMillis()
+            )?.let { downloadDao.update(it) }
+
+            val downloadEntity = downloadDao.find(downloadRequest.id)
+
+            // In case new download request is generated for already existing id in database
+            // and work is not in progress, replace the uuid in database
+
+            if (downloadEntity != null &&
+                downloadEntity.uuid != downloadWorkRequest.id.toString() &&
+                downloadEntity.status != Status.QUEUED.toString() &&
+                downloadEntity.status != Status.PROGRESS.toString() &&
+                downloadEntity.status != Status.STARTED.toString()
+            ) {
+                downloadDao.find(downloadRequest.id)?.copy(
+                    uuid = downloadWorkRequest.id.toString(),
+                    status = Status.QUEUED.toString(),
+                    lastModified = System.currentTimeMillis()
+                )?.let { downloadDao.update(it) }
             }
         } else {
-            dbHelper.insert(
+            downloadDao.insert(
                 DownloadEntity(
                     url = downloadRequest.url,
                     path = downloadRequest.path,
@@ -162,18 +196,25 @@ internal class DownloadManager(
                     metaData = downloadRequest.metaData
                 )
             )
+            deleteFileIfExists(downloadRequest.path, downloadRequest.fileName)
         }
 
         workManager.enqueueUniqueWork(
-            downloadRequest.id.toString(), ExistingWorkPolicy.KEEP,
+            downloadRequest.id.toString(),
+            ExistingWorkPolicy.KEEP,
             downloadWorkRequest
         )
     }
 
     private suspend fun resume(id: Int) {
-        val downloadEntity = dbHelper.find(id)
+        val downloadEntity = downloadDao.find(id)
         if (downloadEntity != null) {
-            dbHelper.updateUserAction(id, UserAction.RESUME.toString(), System.currentTimeMillis())
+            downloadDao.update(
+                downloadEntity.copy(
+                    userAction = UserAction.RESUME.toString(),
+                    lastModified = System.currentTimeMillis()
+                )
+            )
             download(
                 DownloadRequest(
                     url = downloadEntity.url,
@@ -189,22 +230,26 @@ internal class DownloadManager(
     }
 
     private suspend fun cancel(id: Int) {
-        val downloadEntity = dbHelper.find(id)
+        val downloadEntity = downloadDao.find(id)
         if (downloadEntity != null) {
-            dbHelper.updateUserAction(id, UserAction.CANCEL.toString(), System.currentTimeMillis())
+            downloadDao.update(
+                downloadEntity.copy(
+                    userAction = UserAction.CANCEL.toString(),
+                    lastModified = System.currentTimeMillis()
+                )
+            )
             if (downloadEntity.status == Status.PAUSED.toString() ||
                 downloadEntity.status == Status.FAILED.toString()
-            ) { //Edge Case: When user cancel the download in pause or fail (terminating) state as work is already cancelled.
-                dbHelper.updateStatus(
-                    id,
-                    Status.CANCELLED.toString(),
-                    System.currentTimeMillis()
-                )
+            ) { // Edge Case: When user cancel the download in pause or fail (terminating) state as work is already cancelled.
+
+                downloadDao.find(downloadEntity.id)?.copy(
+                    status = Status.CANCELLED.toString(),
+                    lastModified = System.currentTimeMillis()
+                )?.let { downloadDao.update(it) }
                 deleteFileIfExists(downloadEntity.path, downloadEntity.fileName)
                 DownloadNotificationManager(
                     context = context,
-                    notificationConfig = notificationConfig
-                        ?: NotificationConfig(smallIcon = NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON),
+                    notificationConfig = notificationConfig,
                     requestId = id,
                     fileName = downloadEntity.fileName
                 ).sendDownloadCancelledNotification()
@@ -214,16 +259,27 @@ internal class DownloadManager(
     }
 
     private suspend fun pause(id: Int) {
-        if (dbHelper.find(id) != null) {
-            dbHelper.updateUserAction(id, UserAction.PAUSE.toString(), System.currentTimeMillis())
+        val downloadEntity = downloadDao.find(id)
+        if (downloadEntity != null) {
+            downloadDao.update(
+                downloadEntity.copy(
+                    userAction = UserAction.PAUSE.toString(),
+                    lastModified = System.currentTimeMillis()
+                )
+            )
         }
         workManager.cancelUniqueWork(id.toString())
     }
 
     private suspend fun retry(id: Int) {
-        val downloadEntity = dbHelper.find(id)
+        val downloadEntity = downloadDao.find(id)
         if (downloadEntity != null) {
-            dbHelper.updateUserAction(id, UserAction.RETRY.toString(), System.currentTimeMillis())
+            downloadDao.update(
+                downloadEntity.copy(
+                    userAction = UserAction.RETRY.toString(),
+                    lastModified = System.currentTimeMillis()
+                )
+            )
             download(
                 DownloadRequest(
                     url = downloadEntity.url,
@@ -239,12 +295,7 @@ internal class DownloadManager(
     }
 
     private suspend fun findDownloadEntityFromUUID(uuid: UUID): DownloadEntity? {
-        dbHelper.getAllEntity().forEach {
-            if (it.uuid == uuid.toString()) {
-                return it
-            }
-        }
-        return null
+        return downloadDao.getAllEntity().find { it.uuid == uuid.toString() }
     }
 
     fun resumeAsync(id: Int) {
@@ -255,7 +306,7 @@ internal class DownloadManager(
 
     fun resumeAsync(tag: String) {
         scope.launch {
-            dbHelper.getAllEntity().forEach {
+            downloadDao.getAllEntity().forEach {
                 if (it.tag == tag) {
                     resume(it.id)
                 }
@@ -265,7 +316,7 @@ internal class DownloadManager(
 
     fun resumeAllAsync() {
         scope.launch {
-            dbHelper.getAllEntity().forEach {
+            downloadDao.getAllEntity().forEach {
                 resume(it.id)
             }
         }
@@ -279,7 +330,7 @@ internal class DownloadManager(
 
     fun cancelAsync(tag: String) {
         scope.launch {
-            dbHelper.getAllEntity().forEach {
+            downloadDao.getAllEntity().forEach {
                 if (it.tag == tag) {
                     cancel(it.id)
                 }
@@ -289,7 +340,7 @@ internal class DownloadManager(
 
     fun cancelAllAsync() {
         scope.launch {
-            dbHelper.getAllEntity().forEach {
+            downloadDao.getAllEntity().forEach {
                 cancel(it.id)
             }
         }
@@ -303,7 +354,7 @@ internal class DownloadManager(
 
     fun pauseAsync(tag: String) {
         scope.launch {
-            dbHelper.getAllEntity().forEach {
+            downloadDao.getAllEntity().forEach {
                 if (it.tag == tag) {
                     pause(it.id)
                 }
@@ -313,7 +364,7 @@ internal class DownloadManager(
 
     fun pauseAllAsync() {
         scope.launch {
-            dbHelper.getAllEntity().forEach {
+            downloadDao.getAllEntity().forEach {
                 pause(it.id)
             }
         }
@@ -327,7 +378,7 @@ internal class DownloadManager(
 
     fun retryAsync(tag: String) {
         scope.launch {
-            dbHelper.getAllEntity().forEach {
+            downloadDao.getAllEntity().forEach {
                 if (it.tag == tag) {
                     retry(it.id)
                 }
@@ -337,7 +388,7 @@ internal class DownloadManager(
 
     fun retryAllAsync() {
         scope.launch {
-            dbHelper.getAllEntity().forEach {
+            downloadDao.getAllEntity().forEach {
                 retry(it.id)
             }
         }
@@ -346,69 +397,67 @@ internal class DownloadManager(
     fun clearDbAsync(id: Int) {
         scope.launch {
             cancel(id)
-            val downloadEntity = dbHelper.find(id)
+            val downloadEntity = downloadDao.find(id)
             val path = downloadEntity?.path
             val fileName = downloadEntity?.fileName
             if (path != null && fileName != null) {
                 deleteFileIfExists(path, fileName)
             }
-            dbHelper.remove(id)
+            removeNotification(context, id) // In progress notification
+            removeNotification(context, id + 1) // Cancelled, Paused, Failed, Success notification
+            downloadDao.remove(id)
         }
     }
 
     fun clearDbAsync(tag: String) {
         scope.launch {
-            dbHelper.getAllEntityByTag(tag).forEach {
+            downloadDao.getAllEntityByTag(tag).forEach {
                 cancel(it.id)
-                val downloadEntity = dbHelper.find(it.id)
+                val downloadEntity = downloadDao.find(it.id)
                 val path = downloadEntity?.path
                 val fileName = downloadEntity?.fileName
                 if (path != null && fileName != null) {
                     deleteFileIfExists(path, fileName)
                 }
-                dbHelper.remove(it.id)
+                downloadDao.remove(it.id)
+                removeNotification(context, it.id) // In progress notification
+                removeNotification(context, it.id + 1) // Cancelled, Paused, Failed, Success notification
             }
         }
     }
 
     fun clearAllDbAsync() {
         scope.launch {
-            dbHelper.getAllEntity().forEach {
+            downloadDao.getAllEntity().forEach {
                 cancel(it.id)
-                val downloadEntity = dbHelper.find(it.id)
+                val downloadEntity = downloadDao.find(it.id)
                 val path = downloadEntity?.path
                 val fileName = downloadEntity?.fileName
                 if (path != null && fileName != null) {
                     deleteFileIfExists(path, fileName)
                 }
+                removeNotification(context, it.id) // In progress notification
+                removeNotification(context, it.id + 1) // Cancelled, Paused, Failed, Success notification
             }
-            dbHelper.empty()
+            downloadDao.deleteAll()
         }
     }
 
     fun clearDbAsync(timeInMillis: Long) {
         scope.launch {
-            dbHelper.getEntityTillTime(timeInMillis).forEach {
+            downloadDao.getEntityTillTime(timeInMillis).forEach {
                 cancel(it.id)
-                val downloadEntity = dbHelper.find(it.id)
+                val downloadEntity = downloadDao.find(it.id)
                 val path = downloadEntity?.path
                 val fileName = downloadEntity?.fileName
                 if (path != null && fileName != null) {
                     deleteFileIfExists(path, fileName)
                 }
-                dbHelper.remove(it.id)
+                downloadDao.remove(it.id)
+                removeNotification(context, it.id) // In progress notification
+                removeNotification(context, it.id + 1) // Cancelled, Paused, Failed, Success notification
             }
         }
-    }
-
-    fun setConfigs(
-        logger: Logger,
-        downloadConfig: DownloadConfig,
-        notificationConfig: NotificationConfig
-    ) {
-        this.logger = logger
-        this.downloadConfig = downloadConfig
-        this.notificationConfig = notificationConfig
     }
 
     fun downloadAsync(downloadRequest: DownloadRequest) {
@@ -418,89 +467,30 @@ internal class DownloadManager(
     }
 
     fun observeDownloadById(id: Int): Flow<DownloadModel> {
-        return dbHelper.getEntityByIdFlow(id).transform { entity ->
-            emit(
-                DownloadModel(
-                    url = entity.url,
-                    path = entity.path,
-                    fileName = entity.fileName,
-                    tag = entity.tag,
-                    id = entity.id,
-                    headers = WorkUtil.jsonToHashMap(entity.headersJson),
-                    timeQueued = entity.timeQueued,
-                    status = Status.entries.find { it.name == entity.status } ?: Status.DEFAULT,
-                    total = entity.totalBytes,
-                    progress = if (entity.totalBytes.toInt() != 0) ((entity.downloadedBytes * 100) / entity.totalBytes).toInt() else 0,
-                    speedInBytePerMs = entity.speedInBytePerMs,
-                    uuid = UUID.fromString(entity.uuid),
-                    lastModified = entity.lastModified,
-                    eTag = entity.eTag,
-                    metaData = entity.metaData,
-                    failureReason = entity.failureReason
-                )
-            )
+        return downloadDao.getEntityByIdFlow(id).map { entity ->
+            entity.toDownloadModel()
         }
     }
 
     fun observeDownloadsByTag(tag: String): Flow<List<DownloadModel>> {
-        return dbHelper.getAllEntityByTagFlow(tag).transform { entityList ->
-            val downloadModelList = mutableListOf<DownloadModel>()
-            entityList.forEach { entity ->
-                val downloadModel = DownloadModel(
-                    url = entity.url,
-                    path = entity.path,
-                    fileName = entity.fileName,
-                    tag = entity.tag,
-                    id = entity.id,
-                    headers = WorkUtil.jsonToHashMap(entity.headersJson),
-                    timeQueued = entity.timeQueued,
-                    status = Status.entries.find { it.name == entity.status } ?: Status.DEFAULT,
-                    total = entity.totalBytes,
-                    progress = if (entity.totalBytes.toInt() != 0) ((entity.downloadedBytes * 100) / entity.totalBytes).toInt() else 0,
-                    speedInBytePerMs = entity.speedInBytePerMs,
-                    uuid = UUID.fromString(entity.uuid),
-                    lastModified = entity.lastModified,
-                    eTag = entity.eTag,
-                    metaData = entity.metaData,
-                    failureReason = entity.failureReason
-                )
-                downloadModelList.add(downloadModel)
+        return downloadDao.getAllEntityByTagFlow(tag).map { entityList ->
+            entityList.map { entity ->
+                entity.toDownloadModel()
             }
-            downloadModelList.sortBy {
-                it.timeQueued
-            }
-            emit(downloadModelList)
         }
     }
 
     fun observeAllDownloads(): Flow<List<DownloadModel>> {
-        return dbHelper.getAllEntityFlow().transform { entityList ->
-            val downloadModelList = mutableListOf<DownloadModel>()
-            entityList.forEach { entity ->
-                val downloadModel = DownloadModel(
-                    url = entity.url,
-                    path = entity.path,
-                    fileName = entity.fileName,
-                    tag = entity.tag,
-                    id = entity.id,
-                    headers = WorkUtil.jsonToHashMap(entity.headersJson),
-                    timeQueued = entity.timeQueued,
-                    status = Status.entries.find { it.name == entity.status } ?: Status.DEFAULT,
-                    total = entity.totalBytes,
-                    progress = if (entity.totalBytes.toInt() != 0) ((entity.downloadedBytes * 100) / entity.totalBytes).toInt() else 0,
-                    speedInBytePerMs = entity.speedInBytePerMs,
-                    uuid = UUID.fromString(entity.uuid),
-                    lastModified = entity.lastModified,
-                    eTag = entity.eTag,
-                    metaData = entity.metaData,
-                    failureReason = entity.failureReason
-                )
-                downloadModelList.add(downloadModel)
+        return downloadDao.getAllEntityFlow().map { entityList ->
+            entityList.map { entity ->
+                entity.toDownloadModel()
             }
-            downloadModelList.sortBy {
-                it.timeQueued
-            }
-            emit(downloadModelList)
+        }
+    }
+
+    suspend fun getAllDownloads(): List<DownloadModel> {
+        return downloadDao.getAllEntity().map { entity ->
+            entity.toDownloadModel()
         }
     }
 

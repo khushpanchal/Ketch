@@ -18,6 +18,7 @@ internal object DownloadConst {
     const val KEY_DOWNLOAD_CONFIG = "key_download_config"
     const val KEY_NOTIFICATION_CONFIG = "key_notification_config"
     const val ETAG_HEADER = "ETag"
+    const val CONTENT_LENGTH = "Content-Length"
     const val RANGE_HEADER = "Range"
     const val HTTP_RANGE_NOT_SATISFY = 416
 }

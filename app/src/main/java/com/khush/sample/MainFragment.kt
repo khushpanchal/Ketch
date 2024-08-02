@@ -32,6 +32,7 @@ class MainFragment : Fragment() {
 
     private lateinit var fragmentMainBinding: FragmentMainBinding
     private lateinit var adapter: FilesAdapter
+    private lateinit var ketch: Ketch
 
     companion object {
         fun newInstance(): MainFragment {
@@ -48,6 +49,7 @@ class MainFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         super.onCreateView(inflater, container, savedInstanceState)
+        ketch = (requireContext().applicationContext as MainApplication).ketch
         observer()
         fragmentMainBinding = FragmentMainBinding.inflate(inflater)
         return fragmentMainBinding.root
@@ -89,11 +91,11 @@ class MainFragment : Fragment() {
             }
 
             override fun onCancelClick(downloadItem: DownloadModel) {
-                Ketch.getInstance(context!!).cancel(downloadItem.id)
+                ketch.cancel(downloadItem.id)
             }
 
             override fun onDownloadClick(downloadItem: DownloadModel) {
-                Ketch.getInstance(context!!).download(
+                ketch.download(
                     url = downloadItem.url,
                     fileName = downloadItem.fileName,
                     path = downloadItem.path,
@@ -103,15 +105,15 @@ class MainFragment : Fragment() {
             }
 
             override fun onPauseClick(downloadItem: DownloadModel) {
-                Ketch.getInstance(context!!).pause(downloadItem.id)
+                ketch.pause(downloadItem.id)
             }
 
             override fun onResumeClick(downloadItem: DownloadModel) {
-                Ketch.getInstance(context!!).resume(downloadItem.id)
+                ketch.resume(downloadItem.id)
             }
 
             override fun onRetryClick(downloadItem: DownloadModel) {
-                Ketch.getInstance(context!!).retry(downloadItem.id)
+                ketch.retry(downloadItem.id)
             }
         })
         fragmentMainBinding.recyclerView.adapter = adapter
@@ -129,7 +131,7 @@ class MainFragment : Fragment() {
 
         fragmentMainBinding.bt1.text = "Video 1"
         fragmentMainBinding.bt1.setOnClickListener {
-            Ketch.getInstance(requireContext()).download(
+            ketch.download(
                 url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_1.mp4",
@@ -140,7 +142,7 @@ class MainFragment : Fragment() {
 
         fragmentMainBinding.bt2.text = "Video 2"
         fragmentMainBinding.bt2.setOnClickListener {
-            Ketch.getInstance(requireContext()).download(
+            ketch.download(
                 url = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_2.mp4",
@@ -151,7 +153,7 @@ class MainFragment : Fragment() {
 
         fragmentMainBinding.bt3.text = "Video 3"
         fragmentMainBinding.bt3.setOnClickListener {
-            Ketch.getInstance(requireContext()).download(
+            ketch.download(
                 url = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_3.mp4",
@@ -162,7 +164,7 @@ class MainFragment : Fragment() {
 
         fragmentMainBinding.bt4.text = "Image 1"
         fragmentMainBinding.bt4.setOnClickListener {
-            Ketch.getInstance(requireContext()).download(
+            ketch.download(
                 url = "https://picsum.photos/200/300",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Image_1.jpg",
@@ -173,7 +175,7 @@ class MainFragment : Fragment() {
 
         fragmentMainBinding.bt5.text = "Pdf 1"
         fragmentMainBinding.bt5.setOnClickListener {
-            Ketch.getInstance(requireContext()).download(
+            ketch.download(
                 url = "https://sample-videos.com/pdf/Sample-pdf-5mb.pdf",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Pdf_1.pdf",
@@ -184,42 +186,42 @@ class MainFragment : Fragment() {
 
         fragmentMainBinding.bt6.text = "Multiple"
         fragmentMainBinding.bt6.setOnClickListener {
-            Ketch.getInstance(requireContext()).download(
+            ketch.download(
                 url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_1.mp4",
                 tag = "Video",
                 metaData = "158"
             )
-            Ketch.getInstance(requireContext()).download(
+            ketch.download(
                 url = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_2.mp4",
                 tag = "Video",
                 metaData = "169"
             )
-            Ketch.getInstance(requireContext()).download(
+            ketch.download(
                 url = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_3.mp4",
                 tag = "Video",
                 metaData = "48"
             )
-            Ketch.getInstance(requireContext()).download(
+            ketch.download(
                 url = "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_30mb.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_4.mp4",
                 tag = "Video",
                 metaData = "30"
             )
-            Ketch.getInstance(requireContext()).download(
+            ketch.download(
                 url = "https://picsum.photos/200/300",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Image_1.jpg",
                 tag = "Document",
                 metaData = "1"
             )
-            Ketch.getInstance(requireContext()).download(
+            ketch.download(
                 url = "https://sample-videos.com/pdf/Sample-pdf-5mb.pdf",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Pdf_1.pdf",
@@ -232,7 +234,7 @@ class MainFragment : Fragment() {
     private fun observer() {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                Ketch.getInstance(requireContext()).observeDownloads()
+                ketch.observeDownloads()
                     .collect {
                         adapter.submitList(it)
                     }

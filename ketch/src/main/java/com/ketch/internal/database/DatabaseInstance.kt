@@ -2,7 +2,6 @@ package com.ketch.internal.database
 
 import android.content.Context
 import androidx.room.Room
-import com.ketch.internal.utils.DbConst
 
 internal object DatabaseInstance {
 
@@ -24,6 +23,6 @@ internal object DatabaseInstance {
         Room.databaseBuilder(
             context.applicationContext,
             DownloadDatabase::class.java,
-            DbConst.DATABASE_NAME
-        ).build()
+            "ketch_downloader"
+        ).fallbackToDestructiveMigration().build()
 }

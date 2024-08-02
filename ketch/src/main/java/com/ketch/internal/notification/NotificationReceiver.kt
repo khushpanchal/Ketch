@@ -16,50 +16,72 @@ import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.NotificationConst
 import com.ketch.internal.utils.TextUtil
 
+/**
+ * Notification receiver: Responsible for showing the terminating state notification (paused, cancelled, failed)
+ * It also handles the user action from notification (Pause, Resume, Cancel, Retry)
+ *
+ * Notification ID = (Unique Download Request ID + 1) for each download
+ *
+ * @constructor Create empty Notification receiver
+ */
 internal class NotificationReceiver : BroadcastReceiver() {
 
     @SuppressLint("MissingPermission")
     override fun onReceive(context: Context?, intent: Intent?) {
 
         if (context == null || intent == null) return
+        val ketch = Ketch.builder().build(context)
 
+        // Resume the download and dismiss the notification
         if (intent.action == NotificationConst.ACTION_NOTIFICATION_RESUME_CLICK) {
             val requestId =
-                intent.extras?.getInt(DownloadConst.KEY_REQUEST_ID) ?: return
+                intent.extras?.getInt(DownloadConst.KEY_REQUEST_ID)
             val nId = intent.extras?.getInt(NotificationConst.KEY_NOTIFICATION_ID)
             if (nId != null) NotificationManagerCompat.from(context).cancel(nId)
-            Ketch.getInstance(context).resume(requestId)
+            if (requestId != null) {
+                ketch.resume(requestId)
+            }
             return
         }
 
+        // Retry the download and dismiss the notification
         if (intent.action == NotificationConst.ACTION_NOTIFICATION_RETRY_CLICK) {
             val requestId =
-                intent.extras?.getInt(DownloadConst.KEY_REQUEST_ID) ?: return
+                intent.extras?.getInt(DownloadConst.KEY_REQUEST_ID)
             val nId = intent.extras?.getInt(NotificationConst.KEY_NOTIFICATION_ID)
             if (nId != null) NotificationManagerCompat.from(context).cancel(nId)
-            Ketch.getInstance(context).retry(requestId)
+            if (requestId != null) {
+                ketch.retry(requestId)
+            }
             return
         }
 
+        // Pause the download and dismiss the notification
         if (intent.action == NotificationConst.ACTION_NOTIFICATION_PAUSE_CLICK) {
             val requestId =
-                intent.extras?.getInt(DownloadConst.KEY_REQUEST_ID) ?: return
+                intent.extras?.getInt(DownloadConst.KEY_REQUEST_ID)
             val nId = intent.extras?.getInt(NotificationConst.KEY_NOTIFICATION_ID)
             if (nId != null) NotificationManagerCompat.from(context).cancel(nId)
-            Ketch.getInstance(context).pause(requestId)
+            if (requestId != null) {
+                ketch.pause(requestId)
+            }
             return
         }
 
+        // Cancel the download and dismiss the notification
         if (intent.action == NotificationConst.ACTION_NOTIFICATION_CANCEL_CLICK) {
             val requestId =
-                intent.extras?.getInt(DownloadConst.KEY_REQUEST_ID) ?: return
+                intent.extras?.getInt(DownloadConst.KEY_REQUEST_ID)
             val nId = intent.extras?.getInt(NotificationConst.KEY_NOTIFICATION_ID)
             if (nId != null) NotificationManagerCompat.from(context).cancel(nId)
-            Ketch.getInstance(context).cancel(requestId)
+            if (requestId != null) {
+                ketch.cancel(requestId)
+            }
             return
         }
 
-        val notificationActionList = listOf (
+        // List of actions when notification gets triggered
+        val notificationActionList = listOf(
             NotificationConst.ACTION_DOWNLOAD_COMPLETED,
             NotificationConst.ACTION_DOWNLOAD_FAILED,
             NotificationConst.ACTION_DOWNLOAD_CANCELLED,
@@ -80,12 +102,13 @@ internal class NotificationReceiver : BroadcastReceiver() {
                 intent.extras?.getInt(NotificationConst.KEY_NOTIFICATION_SMALL_ICON)
                     ?: NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON
             val fileName = intent.extras?.getString(DownloadConst.KEY_FILE_NAME) ?: ""
+            val currentProgress = intent.extras?.getInt(DownloadConst.KEY_PROGRESS) ?: 0
             val requestId =
                 intent.extras?.getInt(DownloadConst.KEY_REQUEST_ID) ?: -1
             val totalLength = intent.extras?.getLong(DownloadConst.KEY_LENGTH)
                 ?: DownloadConst.DEFAULT_VALUE_LENGTH
 
-            val notificationId = requestId + 1
+            val notificationId = requestId + 1 // unique id for the notification
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 createNotificationChannel(
@@ -96,6 +119,7 @@ internal class NotificationReceiver : BroadcastReceiver() {
                 )
             }
 
+            // Open Application (Send the unique download request id in intent)
             val intentOpen = context.packageManager.getLaunchIntentForPackage(context.packageName)
             intentOpen?.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             intentOpen?.putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
@@ -107,6 +131,7 @@ internal class NotificationReceiver : BroadcastReceiver() {
                     PendingIntent.FLAG_IMMUTABLE
                 )
 
+            // Resume Notification
             val intentResume = Intent(context, NotificationReceiver::class.java).apply {
                 action = NotificationConst.ACTION_NOTIFICATION_RESUME_CLICK
             }
@@ -119,13 +144,30 @@ internal class NotificationReceiver : BroadcastReceiver() {
                 PendingIntent.FLAG_IMMUTABLE
             )
 
+            // Retry Notification
             val intentRetry = Intent(context, NotificationReceiver::class.java).apply {
                 action = NotificationConst.ACTION_NOTIFICATION_RETRY_CLICK
             }
             intentRetry.putExtra(NotificationConst.KEY_NOTIFICATION_ID, notificationId)
             intentRetry.putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
-            val pendingIntentRetry = PendingIntent.getBroadcast(
-                context.applicationContext, notificationId, intentRetry,
+            val pendingIntentRetry =
+                PendingIntent.getBroadcast(
+                    context.applicationContext,
+                    notificationId,
+                    intentRetry,
+                    PendingIntent.FLAG_IMMUTABLE
+                )
+
+            // Cancel Notification
+            val intentCancel = Intent(context, NotificationReceiver::class.java).apply {
+                action = NotificationConst.ACTION_NOTIFICATION_CANCEL_CLICK
+            }
+            intentCancel.putExtra(NotificationConst.KEY_NOTIFICATION_ID, notificationId)
+            intentCancel.putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
+            val pendingIntentCancel = PendingIntent.getBroadcast(
+                context.applicationContext,
+                notificationId,
+                intentCancel,
                 PendingIntent.FLAG_IMMUTABLE
             )
 
@@ -134,11 +176,12 @@ internal class NotificationReceiver : BroadcastReceiver() {
                     .setSmallIcon(notificationSmallIcon)
                     .setContentText(
                         when (intent.action) {
-                            NotificationConst.ACTION_DOWNLOAD_COMPLETED -> "Download successful. (${
-                                TextUtil.getTotalLengthText(
-                                    totalLength
-                                )
-                            })"
+                            NotificationConst.ACTION_DOWNLOAD_COMPLETED ->
+                                "Download successful. (${
+                                    TextUtil.getTotalLengthText(
+                                        totalLength
+                                    )
+                                })"
 
                             NotificationConst.ACTION_DOWNLOAD_FAILED -> "Download failed."
                             NotificationConst.ACTION_DOWNLOAD_PAUSED -> "Download paused."
@@ -151,19 +194,27 @@ internal class NotificationReceiver : BroadcastReceiver() {
                     .setOngoing(false)
                     .setAutoCancel(true)
 
+            // add retry and cancel button for failed download
             if (intent.action == NotificationConst.ACTION_DOWNLOAD_FAILED) {
                 notificationBuilder = notificationBuilder.addAction(
                     -1,
                     NotificationConst.RETRY_BUTTON_TEXT,
                     pendingIntentRetry
                 )
+                    .setProgress(DownloadConst.MAX_VALUE_PROGRESS, currentProgress, false)
+                    .addAction(-1, NotificationConst.CANCEL_BUTTON_TEXT, pendingIntentCancel)
+                    .setSubText("$currentProgress%")
             }
+            // add resume and cancel button for paused download
             if (intent.action == NotificationConst.ACTION_DOWNLOAD_PAUSED) {
                 notificationBuilder = notificationBuilder.addAction(
                     -1,
                     NotificationConst.RESUME_BUTTON_TEXT,
                     pendingIntentResume
                 )
+                    .setProgress(DownloadConst.MAX_VALUE_PROGRESS, currentProgress, false)
+                    .addAction(-1, NotificationConst.CANCEL_BUTTON_TEXT, pendingIntentCancel)
+                    .setSubText("$currentProgress%")
             }
 
             val notification = notificationBuilder
@@ -176,6 +227,10 @@ internal class NotificationReceiver : BroadcastReceiver() {
         }
     }
 
+    /**
+     * Create notification channel for File downloads
+     *
+     */
     @RequiresApi(Build.VERSION_CODES.O)
     private fun createNotificationChannel(
         context: Context,

@@ -6,14 +6,16 @@ import com.ketch.NotificationConfig
 
 class MainApplication: Application() {
 
+    lateinit var ketch: Ketch
+
     override fun onCreate() {
         super.onCreate()
-        Ketch.getInstance(this).initConfig(
-            notificationConfig = NotificationConfig(
+        ketch = Ketch.builder().setNotificationConfig(
+            config = NotificationConfig(
                 enabled = true,
                 smallIcon = R.drawable.ic_launcher_foreground
             )
-        )
+        ).build(this)
     }
 
 }

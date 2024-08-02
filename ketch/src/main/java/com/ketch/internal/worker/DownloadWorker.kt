@@ -6,9 +6,8 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.ketch.Status
 import com.ketch.internal.database.DatabaseInstance
-import com.ketch.internal.database.DownloadEntity
 import com.ketch.internal.download.DownloadTask
-import com.ketch.internal.download.ETagChecker
+import com.ketch.internal.download.ApiResponseHeaderChecker
 import com.ketch.internal.network.RetrofitInstance
 import com.ketch.internal.notification.DownloadNotificationManager
 import com.ketch.internal.utils.DownloadConst
@@ -26,8 +25,12 @@ internal class DownloadWorker(
 ) :
     CoroutineWorker(context, workerParameters) {
 
+    companion object {
+        private const val MAX_PERCENT = 100
+    }
+
     private var downloadNotificationManager: DownloadNotificationManager? = null
-    private val dbHelper = DatabaseInstance.getInstance(context).downloadDao()
+    private val downloadDao = DatabaseInstance.getInstance(context).downloadDao()
 
     override suspend fun doWork(): Result {
 
@@ -54,8 +57,6 @@ internal class DownloadWorker(
         val dirPath = downloadRequest.path
         val fileName = downloadRequest.fileName
         val headers = downloadRequest.headers
-        val tag = downloadRequest.tag
-        val metaData = downloadRequest.metaData
 
         if (notificationConfig.enabled) {
             downloadNotificationManager = DownloadNotificationManager(
@@ -77,34 +78,19 @@ internal class DownloadWorker(
                     it
                 )
             }
+
             val latestETag =
-                ETagChecker(downloadRequest.url, downloadService).getETag(headers) ?: ""
-            val downloadEntity = dbHelper.find(downloadRequest.id)
-            if (downloadEntity == null) {
-                dbHelper.insert(
-                    DownloadEntity(
-                        url = url,
-                        path = dirPath,
-                        fileName = fileName,
-                        tag = tag,
-                        id = id,
-                        headersJson = WorkUtil.hashMapToJson(headers),
-                        timeQueued = System.currentTimeMillis(),
-                        status = Status.QUEUED.toString(),
-                        uuid = getId().toString(),
-                        eTag = latestETag,
-                        lastModified = System.currentTimeMillis(),
-                        userAction = UserAction.START.toString(),
-                        metaData = metaData
-                    )
-                )
+                ApiResponseHeaderChecker(downloadRequest.url, downloadService, headers)
+                    .getHeaderValue(DownloadConst.ETAG_HEADER) ?: ""
+
+            val existingETag = downloadDao.find(id)?.eTag ?: ""
+
+            if (latestETag != existingETag) {
                 FileUtil.deleteFileIfExists(path = dirPath, name = fileName)
-            } else {
-                val existingETag = downloadEntity.eTag
-                if (latestETag != existingETag) {
-                    FileUtil.deleteFileIfExists(path = dirPath, name = fileName)
-                    dbHelper.updateETag(id, latestETag, System.currentTimeMillis())
-                }
+                downloadDao.find(id)?.copy(
+                    eTag = latestETag,
+                    lastModified = System.currentTimeMillis()
+                )?.let { downloadDao.update(it) }
             }
 
             var progressPercentage = 0
@@ -117,8 +103,12 @@ internal class DownloadWorker(
             ).download(
                 headers = headers,
                 onStart = { length ->
-                    dbHelper.updateTotalLength(id, length, System.currentTimeMillis())
-                    dbHelper.updateStatus(id, Status.STARTED.toString(), System.currentTimeMillis())
+
+                    downloadDao.find(id)?.copy(
+                        totalBytes = length,
+                        status = Status.STARTED.toString(),
+                        lastModified = System.currentTimeMillis()
+                    )?.let { downloadDao.update(it) }
 
                     setProgress(
                         workDataOf(
@@ -128,26 +118,22 @@ internal class DownloadWorker(
                 },
                 onProgress = { downloadedBytes, length, speed ->
 
-                    val progress = ((downloadedBytes * 100) / length).toInt()
+                    val progress = if (length != 0L) {
+                        ((downloadedBytes * 100) / length).toInt()
+                    } else {
+                        0
+                    }
+
                     if (progressPercentage != progress) {
 
                         progressPercentage = progress
 
-                        dbHelper.updateStatus(
-                            id,
-                            Status.PROGRESS.toString(),
-                            System.currentTimeMillis()
-                        )
-                        dbHelper.updateProgress(
-                            id,
-                            downloadedBytes,
-                            System.currentTimeMillis()
-                        )
-                        dbHelper.updateSpeed(
-                            id,
-                            speed,
-                            System.currentTimeMillis()
-                        )
+                        downloadDao.find(id)?.copy(
+                            downloadedBytes = downloadedBytes,
+                            speedInBytePerMs = speed,
+                            status = Status.PROGRESS.toString(),
+                            lastModified = System.currentTimeMillis()
+                        )?.let { downloadDao.update(it) }
 
                     }
 
@@ -169,33 +155,64 @@ internal class DownloadWorker(
                     }
                 }
             )
-            dbHelper.updateTotalLength(id, totalLength, System.currentTimeMillis())
-            dbHelper.updateStatus(id, Status.SUCCESS.toString(), System.currentTimeMillis())
+
+            downloadDao.find(id)?.copy(
+                totalBytes = totalLength,
+                status = Status.SUCCESS.toString(),
+                lastModified = System.currentTimeMillis()
+            )?.let { downloadDao.update(it) }
+
             downloadNotificationManager?.sendDownloadSuccessNotification(totalLength)
             Result.success()
         } catch (e: Exception) {
             GlobalScope.launch {
                 if (e is CancellationException) {
-                    if (dbHelper.find(id)?.userAction == UserAction.PAUSE.toString()) {
-                        dbHelper.updateStatus(
-                            id,
-                            Status.PAUSED.toString(),
-                            System.currentTimeMillis()
-                        )
-                        downloadNotificationManager?.sendDownloadPausedNotification()
+                    if (downloadDao.find(id)?.userAction == UserAction.PAUSE.toString()) {
+
+                        downloadDao.find(id)?.copy(
+                            status = Status.PAUSED.toString(),
+                            lastModified = System.currentTimeMillis()
+                        )?.let { downloadDao.update(it) }
+                        val downloadEntity = downloadDao.find(id)
+                        if (downloadEntity != null) {
+                            val currentProgress = if (downloadEntity.totalBytes != 0L) {
+                                ((downloadEntity.downloadedBytes * MAX_PERCENT) / downloadEntity.totalBytes).toInt()
+                            } else {
+                                0
+                            }
+                            downloadNotificationManager?.sendDownloadPausedNotification(
+                                currentProgress = currentProgress
+                            )
+                        }
+
                     } else {
-                        dbHelper.updateStatus(
-                            id,
-                            Status.CANCELLED.toString(),
-                            System.currentTimeMillis()
-                        )
+
+                        downloadDao.find(id)?.copy(
+                            status = Status.CANCELLED.toString(),
+                            lastModified = System.currentTimeMillis()
+                        )?.let { downloadDao.update(it) }
                         FileUtil.deleteFileIfExists(dirPath, fileName)
                         downloadNotificationManager?.sendDownloadCancelledNotification()
+
                     }
                 } else {
-                    dbHelper.updateStatus(id, Status.FAILED.toString(), System.currentTimeMillis())
-                    dbHelper.updateFailureReason(id, e.message ?: "", System.currentTimeMillis())
-                    downloadNotificationManager?.sendDownloadFailedNotification()
+
+                    downloadDao.find(id)?.copy(
+                        status = Status.FAILED.toString(),
+                        failureReason = e.message ?: "",
+                        lastModified = System.currentTimeMillis()
+                    )?.let { downloadDao.update(it) }
+                    val downloadEntity = downloadDao.find(id)
+                    if (downloadEntity != null) {
+                        val currentProgress = if (downloadEntity.totalBytes != 0L) {
+                            ((downloadEntity.downloadedBytes * MAX_PERCENT) / downloadEntity.totalBytes).toInt()
+                        } else {
+                            0
+                        }
+                        downloadNotificationManager?.sendDownloadFailedNotification(
+                            currentProgress = currentProgress
+                        )
+                    }
                 }
             }
             Result.failure(
