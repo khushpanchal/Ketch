@@ -201,7 +201,7 @@ internal class DownloadNotificationManager(
             Intent(context, NotificationReceiver::class.java).apply {
                 putExtra(
                     NotificationConst.KEY_NOTIFICATION_CHANNEL_NAME,
-                    notificationConfig.smallIcon
+                    notificationConfig.channelName
                 )
                 putExtra(
                     NotificationConst.KEY_NOTIFICATION_CHANNEL_IMPORTANCE,
