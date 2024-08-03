@@ -22,14 +22,14 @@ Ketch is simple, powerful, customisable file downloader library for Android buil
 - Ketch can download any type of file. (jpg, png, gif, mp4, mp3, pdf, apk and many more)
 - Ketch guarantees file download unless cancelled explicitly or download is failed.
 - Ketch provide all download info including speed, file size, progress.
-- Ketch provide various callbacks like onQueue, onStart, onProgress, onSuccess, onFailure, onCancel.
-- Ketch provide observable flow of download items.
+- Ketch provide option to pause, resume, cancel, retry and delete the download file.
+- Ketch provide option to observe download items (or single download item) as Flow.
 - Ketch can download multiple files in parallel.
-- Ketch support cancellation of downloads.
 - Ketch support large file downloads.
 - Ketch provide various customisation including custom timeout and custom notification.
 - Ketch is simple and very easy to use.
-- Ketch provide notification for each download providing download info (speed, time left, total size, progress) with cancel action.
+- Ketch provide notification for each download providing download info (speed, time left, total size, progress).
+- Ketch includes option to pause, resume, retry and cancel download from notification.
 
 <p align="center">
   <img height="200" alt = "High level design" src=https://raw.githubusercontent.com/khushpanchal/Ketch/master/assets/Sample_notification.png >
@@ -58,7 +58,7 @@ dependencyResolutionManagement {
    
 ```Groovy
 dependencies {
-  implementation 'com.github.khushpanchal:Ketch:1.0.0'
+  implementation 'com.github.khushpanchal:Ketch:2.0.0'
 }
 ```
 
@@ -66,27 +66,28 @@ dependencies {
 
 - Simplest way to use Ketch:
   
-  - Inside Activity or Fragment, create the instance of Ketch
+  - Create the instance of Ketch in application onCreate. (Ketch is a singleton class and instance will create automatically on first use)
     
     ```Kotlin
       private lateinit var ketch: Ketch
-      override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        ketch = Ketch.init(this)
+      override fun onCreate() {
+        super.onCreate()
+        ketch = Ketch.builder().build(this)
       }
     ```
     
-  - Call the download() function, pass the url, and get callback
+  - Call the download() function, pass the url, fileName, path and observe the download status
     
     ```Kotlin
-      val request = ketch.download(url,
-        onQueue = {},
-        onStart = { length -> },
-        onProgress = { progress, speedInBytePerMs, length -> },
-        onSuccess = { },
-        onFailure = { error -> },
-        onCancel = { }
-      )
+      val id = ketch.download(url, fileName, path)
+      lifecycleScope.launch {
+        repeatOnLifecycle(Lifecycle.State.STARTED) {
+          ketch.observeDownloadById(id)
+            .collect { downloadModel -> 
+              // use downloadModel
+            }
+        }
+      }
     ```
     
   ### Important Note: Add the appropriate storage permission based on API level or onFailure(error) callback will be triggered. Check out sample app for reference.
@@ -94,7 +95,45 @@ dependencies {
 - To cancel the download
   
   ```Kotlin
-      ketch.cancel(request.id)
+      ketch.cancel(downloadModel.id) // other options: cancel(tag), cancelAll()
+  ```
+
+- To pause the download
+  
+  ```Kotlin
+      ketch.pause(downloadModel.id) // other options: pause(tag), pauseAll()
+  ```
+
+- To resume the download
+  
+  ```Kotlin
+      ketch.resume(downloadModel.id) // other options: resume(tag), resumeAll()
+  ```
+
+- To retry the download
+  
+  ```Kotlin
+      ketch.retry(downloadModel.id) // other options: retry(tag), retryAll()
+  ```
+
+- To delete the download
+
+  ```Kotlin
+      ketch.clearDb(downloadModel.id) // other options: clearDb(tag), clearAllDb(), clearDb(timeInMillis)
+  ```
+
+- Observing: Provides state flow of download items (Each item carries download info like url, fileName, path, tag, id, timeQueued, status, progress, length, speed, lastModified, metaData, failureReson, eTag)
+
+  ```Kotlin
+    //To observe from Fragment
+    viewLifecycleOwner.lifecycleScope.launch {
+      repeatOnLifecycle(Lifecycle.State.STARTED) {
+        ketch.observeDownloads()
+          .collect { 
+             //set items to adapter
+          }
+      }
+    }
   ```
   
 - To enable the notification:
@@ -109,99 +148,69 @@ dependencies {
    - Pass the notification config while initialization
      
      ```Kotlin
-       ketch = Ketch.init(this,
-                notificationConfig = NotificationConfig(
-                    enabled = true,
-                    smallIcon = R.drawable.ic_launcher_foreground // It is required to pass the smallIcon for notification.
-                )
+     ketch = Ketch.builder().setNotificationConfig(
+              config = NotificationConfig(
+                enabled = true,
+                smallIcon = R.drawable.ic_launcher_foreground // It is required to pass the smallIcon for notification.
               )
+            ).build(this)
      ```
      
 ## Customisation
-
-- Provide file name and path for download. (It is recommended to pass the fileName or library will assign random name)
-
-  ```Kotlin
-  ketch.download(url,
-   path, //Default path: Download directory
-   fileName //Default fileName: Random UUID.
-  )
-  ```
   
 - Provide headers with network request.
   
   ```Kotlin
-  ketch.download(url,
+  ketch.download(url, fileName, path,
    headers = headers, //Default: Empty hashmap
   )
   ```
   
-- Tag: Group various downloads by providing additional Tag. (This tag can be use to cancel the download as well)
+- Tag: Group various downloads by providing additional Tag. (This tag can be use to cancel, pause, resume, delete the download as well)
 
   ```Kotlin
-  ketch.download(url,
+  ketch.download(url, fileName, path,
    tag = tag, //Default: null
   )
-  ```
-  
-- Cancellation: In addition to cancel by request id, provides cancellation by tag and cancel all downloads.
-
-  ```Kotlin
-    ketch.cancel(tag)
-  ```
-  
-  ```Kotlin
-    ketch.cancelAll()
-  ```
-  
-- Observing: Provides state flow of download items (Each item carries download info like url, fileName, path, tag, status, progress, length, timeQueued, speed, id)
-
-  ```Kotlin
-    //To observe from Fragment
-    viewLifecycleOwner.lifecycleScope.launch {
-      repeatOnLifecycle(Lifecycle.State.STARTED) {
-        ketch.observeDownloads()
-          .collect { 
-             //set items to adapter
-          }
-      }
-    }
-    //observe from viewModel to survive configuration change
-  ```
-
-  ```Kotlin
-    // To stop observing
-    ketch.stopObserving()
   ```
   
 - Download config: Provides custom connect and read timeout
 
   ```Kotlin
-    ketch = Ketch.init(this,
-                downloadConfig = DownloadConfig(
-                    connectTimeOutInMs = 20000L, //Default: 10000L
-                    readTimeOutInMs = 15000L //Default: 10000L
-                )
-              )
+    ketch = Ketch.builder().setDownloadConfig(
+      config = DownloadConfig(
+        connectTimeOutInMs = 20000L, //Default: 10000L
+        readTimeOutInMs = 15000L //Default: 10000L
+      )
+    ).build(this)
   ```
   
 - Notification config: Provide custom notification config
 
   ```Kotlin
-    ketch = Ketch.init(this,
-                notificationConfig = NotificationConfig(
-                   enabled = true, //Default: false
-                   channelName = channelName, //Default: "File Download"
-                   channelDescription = channelDescription, //Default: "Notify file download status"
-                   importance = importance, //Default: NotificationManager.IMPORTANCE_HIGH
-                   smallIcon = smallIcon, //It is required
-                )
-              )
+    ketch = Ketch.builder().setNotificationConfig(
+      config = NotificationConfig(
+        enabled = true, //Default: false
+        channelName = channelName, //Default: "File Download"
+        channelDescription = channelDescription, //Default: "Notify file download status"
+        importance = importance, //Default: NotificationManager.IMPORTANCE_HIGH
+        smallIcon = smallIcon, //It is required
+        showSpeed = true, //Default: true
+        showSize = true, //Default: true
+        showTime = true //Default: true
+      )
+    ).build(this)
   ```
 
 # Blog
 
 Check out the blog to understand working of Ketch (High Level Design): [https://medium.com/@khush.panchal123/ketch-android-file-downloader-library-7369f7b93bd1](https://medium.com/@khush.panchal123/ketch-android-file-downloader-library-7369f7b93bd1)
+
+### High level Design
+
+<p align="center">
+  <img width="950" src="https://raw.githubusercontent.com/khushpanchal/Ketch/master/assets/Ketch_hld.png" >
+</p>
 
 ## Contact Me
 
