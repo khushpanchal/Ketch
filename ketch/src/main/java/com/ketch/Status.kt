@@ -14,5 +14,7 @@ enum class Status {
 
     FAILED,
 
+    PAUSED,
+
     DEFAULT
 }

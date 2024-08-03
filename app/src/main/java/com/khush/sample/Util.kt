@@ -2,6 +2,7 @@ package com.khush.sample
 
 object Util {
     fun getTimeLeftText(speedInBPerMs: Float, progressPercent: Int, lengthInBytes: Long): String {
+        if(speedInBPerMs == 0F) return ""
         val speedInBPerSecond = speedInBPerMs * 1000
         val bytesLeft = (lengthInBytes * (100 - progressPercent) / 100).toFloat()
 

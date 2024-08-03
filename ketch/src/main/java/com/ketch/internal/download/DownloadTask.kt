@@ -1,33 +1,83 @@
 package com.ketch.internal.download
 
 import com.ketch.internal.network.DownloadService
-import com.ketch.internal.utils.FileUtil.deleteFileIfExists
+import com.ketch.internal.utils.DownloadConst
+import com.ketch.internal.utils.FileUtil
 import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
 
 internal class DownloadTask(
-    private val url: String,
-    private val path: String,
-    private val fileName: String,
-    private val downloadService: DownloadService
+    private var url: String,
+    private var path: String,
+    private var fileName: String,
+    private val downloadService: DownloadService,
 ) {
 
+    companion object {
+        private const val VALUE_200 = 200
+        private const val VALUE_299 = 299
+        private const val TIME_TO_TRIGGER_PROGRESS = 1500
+    }
+
     suspend fun download(
-        headers: Map<String, String> = mapOf(),
+        headers: MutableMap<String, String> = mutableMapOf(),
         onStart: suspend (Long) -> Unit,
-        onProgress: suspend (Int, Long, Float) -> Unit
+        onProgress: suspend (Long, Long, Float) -> Unit
     ): Long {
-        val responseBody = downloadService.getUrl(url, headers)
-        deleteFileIfExists(path, fileName)
-        val destinationFile = File(path, fileName)
-        var totalBytes: Long
+
+        var rangeStart = 0L
+        val file = File(path, fileName)
+
+        if (file.exists()) {
+            rangeStart = file.length()
+        }
+
+        if (rangeStart != 0L) {
+            headers[DownloadConst.RANGE_HEADER] = "bytes=$rangeStart-"
+        }
+
+        var response = downloadService.getUrl(url, headers)
+        if (response.code() == DownloadConst.HTTP_RANGE_NOT_SATISFY || isRedirection(
+                response.raw().request().url().toString()
+            )
+        ) {
+            FileUtil.deleteFileIfExists(path, fileName)
+            headers.remove(DownloadConst.RANGE_HEADER)
+            rangeStart = 0
+            response = downloadService.getUrl(url, headers)
+        }
+
+        val responseBody = response.body()
+
+        if (response.code() !in VALUE_200..VALUE_299 ||
+            responseBody == null
+        ) {
+            throw IOException(
+                "Something went wrong, response code: ${response.code()}, responseBody null: ${responseBody == null}"
+            )
+        }
+
+        var totalBytes = responseBody.contentLength()
+
+        if (totalBytes < 0) throw IOException("Content Length is wrong: $totalBytes")
+
+        var progressBytes = 0L
+
+        totalBytes += rangeStart
+
+        val out = FileOutputStream(file, true)
 
         responseBody.byteStream().use { inputStream ->
-            destinationFile.outputStream().use { outputStream ->
-                totalBytes = responseBody.contentLength()
+            out.use { outputStream ->
+
+                if (rangeStart != 0L) {
+                    progressBytes = rangeStart
+                }
+
                 onStart.invoke(totalBytes)
 
                 val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                var progressBytes = 0L
                 var bytes = inputStream.read(buffer)
                 var tempBytes = 0L
                 var progressInvokeTime = System.currentTimeMillis()
@@ -39,26 +89,28 @@ internal class DownloadTask(
                     progressBytes += bytes
                     tempBytes += bytes
                     bytes = inputStream.read(buffer)
-
                     val finalTime = System.currentTimeMillis()
-
-                    if (finalTime - progressInvokeTime >= 500) {
+                    if (finalTime - progressInvokeTime >= TIME_TO_TRIGGER_PROGRESS) {
 
                         speed = tempBytes.toFloat() / ((finalTime - progressInvokeTime).toFloat())
                         tempBytes = 0L
                         progressInvokeTime = System.currentTimeMillis()
+                        if (progressBytes > totalBytes) progressBytes = totalBytes
                         onProgress.invoke(
-                            ((progressBytes * 100) / totalBytes).toInt(),
+                            progressBytes,
                             totalBytes,
                             speed
                         )
-
                     }
                 }
-                onProgress.invoke(100, totalBytes, 0F)
+                onProgress.invoke(totalBytes, totalBytes, 0F)
             }
         }
 
         return totalBytes
+    }
+
+    private fun isRedirection(requestUrl: String): Boolean {
+        return requestUrl != url
     }
 }

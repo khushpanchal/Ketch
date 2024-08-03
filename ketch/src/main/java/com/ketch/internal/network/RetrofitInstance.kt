@@ -10,7 +10,10 @@ internal object RetrofitInstance {
     @Volatile
     private var downloadService: DownloadService? = null
 
-    fun getDownloadService(connectTimeOutInMs: Long, readTimeOutInMs: Long): DownloadService {
+    fun getDownloadService(
+        connectTimeOutInMs: Long = DownloadConst.DEFAULT_VALUE_CONNECT_TIMEOUT_MS,
+        readTimeOutInMs: Long = DownloadConst.DEFAULT_VALUE_READ_TIMEOUT_MS
+    ): DownloadService {
         if (downloadService == null) {
             synchronized(this) {
                 if (downloadService == null) {

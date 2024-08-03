@@ -3,6 +3,7 @@ package com.khush.sample
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
+import android.os.Environment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -18,9 +19,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
-import com.ketch.Ketch
 import com.ketch.DownloadModel
-import com.ketch.NotificationConfig
+import com.ketch.Ketch
 import com.ketch.Status
 import com.khush.sample.databinding.FragmentMainBinding
 import com.khush.sample.databinding.ItemFileBinding
@@ -32,9 +32,7 @@ class MainFragment : Fragment() {
 
     private lateinit var fragmentMainBinding: FragmentMainBinding
     private lateinit var adapter: FilesAdapter
-
     private lateinit var ketch: Ketch
-
 
     companion object {
         fun newInstance(): MainFragment {
@@ -51,13 +49,7 @@ class MainFragment : Fragment() {
         savedInstanceState: Bundle?
     ): View {
         super.onCreateView(inflater, container, savedInstanceState)
-        ketch = Ketch.init(
-            this.requireContext(),
-            notificationConfig = NotificationConfig(
-                enabled = true,
-                smallIcon = R.drawable.ic_launcher_foreground
-            )
-        )
+        ketch = (requireContext().applicationContext as MainApplication).ketch
         observer()
         fragmentMainBinding = FragmentMainBinding.inflate(inflater)
         return fragmentMainBinding.root
@@ -101,6 +93,32 @@ class MainFragment : Fragment() {
             override fun onCancelClick(downloadItem: DownloadModel) {
                 ketch.cancel(downloadItem.id)
             }
+
+            override fun onDownloadClick(downloadItem: DownloadModel) {
+                ketch.download(
+                    url = downloadItem.url,
+                    fileName = downloadItem.fileName,
+                    path = downloadItem.path,
+                    tag = downloadItem.tag,
+                    metaData = downloadItem.metaData
+                )
+            }
+
+            override fun onPauseClick(downloadItem: DownloadModel) {
+                ketch.pause(downloadItem.id)
+            }
+
+            override fun onResumeClick(downloadItem: DownloadModel) {
+                ketch.resume(downloadItem.id)
+            }
+
+            override fun onRetryClick(downloadItem: DownloadModel) {
+                ketch.retry(downloadItem.id)
+            }
+
+            override fun onDeleteClick(downloadItem: DownloadModel) {
+                ketch.clearDb(downloadItem.id)
+            }
         })
         fragmentMainBinding.recyclerView.adapter = adapter
         (fragmentMainBinding.recyclerView.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations =
@@ -114,16 +132,106 @@ class MainFragment : Fragment() {
                 DividerItemDecoration.VERTICAL
             )
         )
-        fragmentMainBinding.button.setOnClickListener {
-            val url = fragmentMainBinding.editTextUrl.text.toString()
-            val fileName = fragmentMainBinding.editTextName.text.toString()
-            if (url.isEmpty()) {
-                Toast.makeText(this.context, "Enter Valid URL", Toast.LENGTH_SHORT).show()
-            } else if (fileName.isEmpty()) {
-                Toast.makeText(this.context, "Enter Valid File name", Toast.LENGTH_SHORT).show()
-            } else {
-                ketch.download(url = url, fileName = fileName)
-            }
+
+        fragmentMainBinding.bt1.text = "Video 1"
+        fragmentMainBinding.bt1.setOnClickListener {
+            ketch.download(
+                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Video_1.mp4",
+                tag = "Video",
+                metaData = "158"
+            )
+        }
+
+        fragmentMainBinding.bt2.text = "Video 2"
+        fragmentMainBinding.bt2.setOnClickListener {
+            ketch.download(
+                url = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Video_2.mp4",
+                tag = "Video",
+                metaData = "169"
+            )
+        }
+
+        fragmentMainBinding.bt3.text = "Video 3"
+        fragmentMainBinding.bt3.setOnClickListener {
+            ketch.download(
+                url = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Video_3.mp4",
+                tag = "Video",
+                metaData = "48"
+            )
+        }
+
+        fragmentMainBinding.bt4.text = "Image 1"
+        fragmentMainBinding.bt4.setOnClickListener {
+            ketch.download(
+                url = "https://picsum.photos/200/300",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Image_1.jpg",
+                tag = "Document",
+                metaData = "1"
+            )
+        }
+
+        fragmentMainBinding.bt5.text = "Pdf 1"
+        fragmentMainBinding.bt5.setOnClickListener {
+            ketch.download(
+                url = "https://sample-videos.com/pdf/Sample-pdf-5mb.pdf",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Pdf_1.pdf",
+                tag = "Document",
+                metaData = "5"
+            )
+        }
+
+        fragmentMainBinding.bt6.text = "Multiple"
+        fragmentMainBinding.bt6.setOnClickListener {
+            ketch.download(
+                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Video_1.mp4",
+                tag = "Video",
+                metaData = "158"
+            )
+            ketch.download(
+                url = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Video_2.mp4",
+                tag = "Video",
+                metaData = "169"
+            )
+            ketch.download(
+                url = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Video_3.mp4",
+                tag = "Video",
+                metaData = "48"
+            )
+            ketch.download(
+                url = "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_30mb.mp4",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Video_4.mp4",
+                tag = "Video",
+                metaData = "30"
+            )
+            ketch.download(
+                url = "https://picsum.photos/200/300",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Image_1.jpg",
+                tag = "Document",
+                metaData = "1"
+            )
+            ketch.download(
+                url = "https://sample-videos.com/pdf/Sample-pdf-5mb.pdf",
+                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                fileName = "Sample_Pdf_1.pdf",
+                tag = "Document",
+                metaData = "5"
+            )
         }
     }
 
@@ -131,7 +239,7 @@ class MainFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 ketch.observeDownloads()
-                    .collect {//observe from viewModel to survive configuration change
+                    .collect {
                         adapter.submitList(it)
                     }
             }
@@ -169,15 +277,23 @@ class FilesAdapter(private val listener: FileClickListener) :
                 downloadModel.total
             ) + ", " + Util.getSpeedText(downloadModel.speedInBytePerMs)
 
-
-            if (downloadModel.status != Status.SUCCESS) {
-                binding.cancelButton.visibility = View.VISIBLE
-            } else {
-                binding.cancelButton.visibility = View.GONE
+            binding.downloadButton.setOnClickListener {
+                listener.onDownloadClick(downloadModel)
             }
-
             binding.cancelButton.setOnClickListener {
                 listener.onCancelClick(downloadModel)
+            }
+            binding.pauseButton.setOnClickListener {
+                listener.onPauseClick(downloadModel)
+            }
+            binding.resumeButton.setOnClickListener {
+                listener.onResumeClick(downloadModel)
+            }
+            binding.deleteButton.setOnClickListener {
+                listener.onDeleteClick(downloadModel)
+            }
+            binding.retryButton.setOnClickListener {
+                listener.onRetryClick(downloadModel)
             }
             binding.root.setOnClickListener {
                 listener.onFileClick(downloadModel)
@@ -199,6 +315,11 @@ class FilesAdapter(private val listener: FileClickListener) :
     interface FileClickListener {
         fun onFileClick(downloadItem: DownloadModel)
         fun onCancelClick(downloadItem: DownloadModel)
+        fun onDownloadClick(downloadItem: DownloadModel)
+        fun onPauseClick(downloadItem: DownloadModel)
+        fun onResumeClick(downloadItem: DownloadModel)
+        fun onRetryClick(downloadItem: DownloadModel)
+        fun onDeleteClick(downloadItem: DownloadModel)
     }
 
 }
