@@ -115,6 +115,10 @@ class MainFragment : Fragment() {
             override fun onRetryClick(downloadItem: DownloadModel) {
                 ketch.retry(downloadItem.id)
             }
+
+            override fun onDeleteClick(downloadItem: DownloadModel) {
+                ketch.clearDb(downloadItem.id)
+            }
         })
         fragmentMainBinding.recyclerView.adapter = adapter
         (fragmentMainBinding.recyclerView.itemAnimator as? SimpleItemAnimator)?.supportsChangeAnimations =
@@ -285,6 +289,9 @@ class FilesAdapter(private val listener: FileClickListener) :
             binding.resumeButton.setOnClickListener {
                 listener.onResumeClick(downloadModel)
             }
+            binding.deleteButton.setOnClickListener {
+                listener.onDeleteClick(downloadModel)
+            }
             binding.retryButton.setOnClickListener {
                 listener.onRetryClick(downloadModel)
             }
@@ -312,6 +319,7 @@ class FilesAdapter(private val listener: FileClickListener) :
         fun onPauseClick(downloadItem: DownloadModel)
         fun onResumeClick(downloadItem: DownloadModel)
         fun onRetryClick(downloadItem: DownloadModel)
+        fun onDeleteClick(downloadItem: DownloadModel)
     }
 
 }
