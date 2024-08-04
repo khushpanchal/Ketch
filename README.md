@@ -3,7 +3,7 @@
 
 # Ketch
 
-## An Android File downloader library based on WorkManager
+## An Android File downloader library based on WorkManager with pause and resume support
 
 <p align="center">
   <img width="950" src="https://raw.githubusercontent.com/khushpanchal/Ketch/master/assets/Ketch_logo.png" >
