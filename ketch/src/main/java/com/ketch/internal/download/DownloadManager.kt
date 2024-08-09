@@ -29,6 +29,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -467,7 +469,7 @@ internal class DownloadManager(
     }
 
     fun observeDownloadById(id: Int): Flow<DownloadModel> {
-        return downloadDao.getEntityByIdFlow(id).map { entity ->
+        return downloadDao.getEntityByIdFlow(id).filterNotNull().distinctUntilChanged().map { entity ->
             entity.toDownloadModel()
         }
     }
