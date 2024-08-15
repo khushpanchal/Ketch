@@ -28,9 +28,10 @@ internal class DownloadTask(
 
         var rangeStart = 0L
         val file = File(path, fileName)
+        val tempFile = FileUtil.getTempFileForFile(file)
 
-        if (file.exists()) {
-            rangeStart = file.length()
+        if (tempFile.exists()) {
+            rangeStart = tempFile.length()
         }
 
         if (rangeStart != 0L) {
@@ -66,10 +67,8 @@ internal class DownloadTask(
 
         totalBytes += rangeStart
 
-        val out = FileOutputStream(file, true)
-
         responseBody.byteStream().use { inputStream ->
-            out.use { outputStream ->
+            FileOutputStream(tempFile,true).use { outputStream ->
 
                 if (rangeStart != 0L) {
                     progressBytes = rangeStart
@@ -106,6 +105,8 @@ internal class DownloadTask(
                 onProgress.invoke(totalBytes, totalBytes, 0F)
             }
         }
+
+        require(tempFile.renameTo(file)) { "Temp file rename failed" }
 
         return totalBytes
     }
