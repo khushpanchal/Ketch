@@ -5,49 +5,47 @@ import androidx.core.app.NotificationManagerCompat
 import com.ketch.DownloadConfig
 import com.ketch.NotificationConfig
 import com.ketch.internal.download.DownloadRequest
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 internal object WorkUtil {
-    private val gson = Gson()
 
     fun DownloadRequest.toJson(): String {
-        return gson.toJson(this)
+        return Json.encodeToString(this)
     }
 
     fun jsonToDownloadRequest(jsonStr: String): DownloadRequest {
-        return gson.fromJson(jsonStr, DownloadRequest::class.java)
+        return Json.decodeFromString(jsonStr)
     }
 
     fun DownloadConfig.toJson(): String {
-        return gson.toJson(this)
+        return Json.encodeToString(this)
     }
 
     fun jsonToDownloadConfig(jsonStr: String): DownloadConfig {
         if (jsonStr.isEmpty()) return DownloadConfig()
-        return gson.fromJson(jsonStr, DownloadConfig::class.java)
+        return Json.decodeFromString(jsonStr)
     }
 
     fun NotificationConfig.toJson(): String {
-        return gson.toJson(this)
+        return Json.encodeToString(this)
     }
 
     fun jsonToNotificationConfig(jsonStr: String): NotificationConfig {
         if (jsonStr.isEmpty()) {
             return NotificationConfig(smallIcon = NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON)
         }
-        return gson.fromJson(jsonStr, NotificationConfig::class.java)
+        return Json.decodeFromString(jsonStr)
     }
 
     fun hashMapToJson(headers: HashMap<String, String>): String {
         if (headers.isEmpty()) return ""
-        return gson.toJson(headers)
+        return Json.encodeToString(headers)
     }
 
     fun jsonToHashMap(jsonString: String): HashMap<String, String> {
         if (jsonString.isEmpty()) return hashMapOf()
-        val type = object : TypeToken<HashMap<String, String>>() {}.type
-        return gson.fromJson(jsonString, type)
+        return Json.decodeFromString(jsonString)
     }
 
     fun removeNotification(context: Context, notificationId: Int) {
