@@ -6,22 +6,17 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    needs:
-      - Initialize
     steps:
+      - uses: ./.github/workflows/Initialize.yml
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - uses: ./.github/workflows/Initialize.yml
 
       - name: Build The Project
         run: ./gradlew clean build
 
   test:
     runs-on: ubuntu-latest
-    needs:
-      - Initialize
-      - build
+    needs: build
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
