@@ -2,6 +2,10 @@ name: Ketch Github Actions For PR
 on:
   pull_request:
     branches: [ "master","dev" ]
+  push:
+    branches:
+      - "master"
+      - "dev"
 
 jobs:
   build:
