@@ -1,0 +1,41 @@
+name: Ketch Github Actions For PR
+on:
+  pull_request:
+    branches: ["master","dev"]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Initialize
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          check-latest: false
+          cache: gradle
+
+      - name: Java Version
+        run: javac -version
+
+      - name: Grant execute permissions for gradlew
+        run: chmod +x gradlew
+
+      - name: Build The Project
+        run: ./gradlew clean build
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Run Test
+        run: ./gradlew testDebugUnitTest --continue
+      - name: Upload Test Reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-reports
+          path: '**/build/reports/tests/'
