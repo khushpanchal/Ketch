@@ -6,6 +6,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    needs:
+      - Initialize
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -17,7 +19,9 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
-    needs: build
+    needs:
+      - Initialize
+      - build
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
