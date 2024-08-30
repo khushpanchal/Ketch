@@ -10,7 +10,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - uses: .github/workflows/Initialize.yml
+      - uses: /.github/workflows/Initialize.yml
 
       - name: Build The Project
         run: ./gradlew clean build
@@ -21,7 +21,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - uses: .github/workflows/Initialize.yml
+      - uses: /.github/workflows/Initialize.yml
       - name: Run Test
         run: ./gradlew testDebugUnitTest --continue
       - name: Upload Test Reports
