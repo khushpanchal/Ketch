@@ -1,12 +1,15 @@
 name: Ketch Github Actions For PR
 on:
   pull_request:
-    branches: ["master","dev"]
+    branches: [ "master","dev" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - uses: ./.github/workflows/Initialize.yml
 
       - name: Build The Project
@@ -16,6 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: build
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - uses: ./.github/workflows/Initialize.yml
       - name: Run Test
         run: ./gradlew testDebugUnitTest --continue
