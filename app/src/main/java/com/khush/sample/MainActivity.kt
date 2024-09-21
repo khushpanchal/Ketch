@@ -27,7 +27,7 @@ class MainActivity : AppCompatActivity() {
 
         if (savedInstanceState != null) return
 
-        if(Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
             openTestFragment()
             return
         }

@@ -14,6 +14,8 @@ import com.ketch.internal.utils.NotificationConst
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 
 /**
  * Ketch: Core singleton class client interacts with
@@ -32,6 +34,7 @@ import kotlinx.coroutines.withContext
  *     override fun onCreate() {
  *         super.onCreate()
  *         ketch = Ketch.builder()
+ *             .setOkHttpClient(...) // optional
  *             .setDownloadConfig(DownloadConfig()) // optional
  *             .setNotificationConfig( // optional, Notification is off by default
  *                 NotificationConfig(
@@ -57,7 +60,9 @@ import kotlinx.coroutines.withContext
  * // To observe the downloads
  * lifecycleScope.launch {
  *    repeatOnLifecycle(Lifecycle.State.STARTED) {
- *       ketch.observeDownloads().collect { downloadModelList ->
+ *       ketch.observeDownloads()
+ *        .flowOn(Dispatchers.IO)
+ *        .collect { downloadModelList ->
  *         // take appropriate action with observed list of [DownloadModel]
  *       }
  *    }
@@ -81,7 +86,8 @@ class Ketch private constructor(
     private val context: Context,
     private var downloadConfig: DownloadConfig,
     private var notificationConfig: NotificationConfig,
-    private var logger: Logger
+    private var logger: Logger,
+    private var okHttpClient: OkHttpClient
 ) {
 
     companion object {
@@ -97,7 +103,14 @@ class Ketch private constructor(
                 smallIcon = NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON
             )
             private var logger: Logger = DownloadLogger(false)
+            private lateinit var okHttpClient: OkHttpClient
 
+            /**
+             * Set download config: It has no effect if using [setOkHttpClient] function
+             * Pass timeout values inside okHttpClient itself
+             *
+             * @param config [DownloadConfig]
+             */
             fun setDownloadConfig(config: DownloadConfig) = apply {
                 this.downloadConfig = config
             }
@@ -114,19 +127,37 @@ class Ketch private constructor(
                 this.logger = logger
             }
 
+            fun setOkHttpClient(okHttpClient: OkHttpClient) = apply {
+                this.okHttpClient = okHttpClient
+            }
+
             @Synchronized
             fun build(context: Context): Ketch {
                 if (ketchInstance == null) {
+
+                    if (!::okHttpClient.isInitialized) {
+                        okHttpClient = OkHttpClient
+                            .Builder()
+                            .connectTimeout(downloadConfig.connectTimeOutInMs, TimeUnit.MILLISECONDS)
+                            .readTimeout(downloadConfig.readTimeOutInMs, TimeUnit.MILLISECONDS)
+                            .build()
+                    }
+
                     ketchInstance = Ketch(
                         context = context.applicationContext,
                         downloadConfig = downloadConfig,
                         notificationConfig = notificationConfig,
-                        logger = logger
+                        logger = logger,
+                        okHttpClient = okHttpClient
                     )
                 }
                 return ketchInstance!!
             }
         }
+    }
+
+    init {
+        RetrofitInstance.getDownloadService(okHttpClient = okHttpClient)
     }
 
     private val downloadManager = DownloadManager(
@@ -310,36 +341,40 @@ class Ketch private constructor(
     /**
      * Clear all entries from database and delete all the files
      *
+     * @param deleteFile delete the actual file from the system
      */
-    fun clearAllDb() {
-        downloadManager.clearAllDbAsync()
+    fun clearAllDb(deleteFile: Boolean = true) {
+        downloadManager.clearAllDbAsync(deleteFile)
     }
 
     /**
      * Clear entries from database and delete files on or before [timeInMillis]
      *
      * @param timeInMillis timestamp in millisecond
+     * @param deleteFile delete the actual file from the system
      */
-    fun clearDb(timeInMillis: Long) {
-        downloadManager.clearDbAsync(timeInMillis)
+    fun clearDb(timeInMillis: Long, deleteFile: Boolean = true) {
+        downloadManager.clearDbAsync(timeInMillis, deleteFile)
     }
 
     /**
      * Clear entry from database and delete file with given [id]
      *
      * @param id Unique Download ID of the download
+     * @param deleteFile delete the actual file from the system
      */
-    fun clearDb(id: Int) {
-        downloadManager.clearDbAsync(id)
+    fun clearDb(id: Int, deleteFile: Boolean = true) {
+        downloadManager.clearDbAsync(id, deleteFile)
     }
 
     /**
      * Clear entries from database and delete files with given [tag]
      *
      * @param tag Tag associated with the download
+     * @param deleteFile delete the actual file from the system
      */
-    fun clearDb(tag: String) {
-        downloadManager.clearDbAsync(tag)
+    fun clearDb(tag: String, deleteFile: Boolean = true) {
+        downloadManager.clearDbAsync(tag, deleteFile)
     }
 
     /**

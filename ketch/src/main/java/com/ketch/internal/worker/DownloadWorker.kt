@@ -42,11 +42,6 @@ internal class DownloadWorker(
                     )
             )
 
-        val downloadConfig =
-            WorkUtil.jsonToDownloadConfig(
-                inputData.getString(DownloadConst.KEY_DOWNLOAD_CONFIG) ?: ""
-            )
-
         val notificationConfig =
             WorkUtil.jsonToNotificationConfig(
                 inputData.getString(DownloadConst.KEY_NOTIFICATION_CONFIG) ?: ""
@@ -67,10 +62,7 @@ internal class DownloadWorker(
             )
         }
 
-        val downloadService = RetrofitInstance.getDownloadService(
-            downloadConfig.connectTimeOutInMs,
-            downloadConfig.readTimeOutInMs
-        )
+        val downloadService = RetrofitInstance.getDownloadService()
 
         return try {
             downloadNotificationManager?.sendUpdateNotification()?.let {
