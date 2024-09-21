@@ -15,7 +15,6 @@ internal object DownloadConst {
     const val DEFAULT_VALUE_LENGTH = 0L
     const val KEY_REQUEST_ID = "key_request_id"
     const val KEY_DOWNLOAD_REQUEST = "key_download_request"
-    const val KEY_DOWNLOAD_CONFIG = "key_download_config"
     const val KEY_NOTIFICATION_CONFIG = "key_notification_config"
     const val ETAG_HEADER = "ETag"
     const val CONTENT_LENGTH = "Content-Length"

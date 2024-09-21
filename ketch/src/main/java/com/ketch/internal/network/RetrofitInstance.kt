@@ -11,8 +11,12 @@ internal object RetrofitInstance {
     private var downloadService: DownloadService? = null
 
     fun getDownloadService(
-        connectTimeOutInMs: Long = DownloadConst.DEFAULT_VALUE_CONNECT_TIMEOUT_MS,
-        readTimeOutInMs: Long = DownloadConst.DEFAULT_VALUE_READ_TIMEOUT_MS
+        okHttpClient: OkHttpClient =
+            OkHttpClient
+                .Builder()
+                .connectTimeout(DownloadConst.DEFAULT_VALUE_CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                .readTimeout(DownloadConst.DEFAULT_VALUE_READ_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                .build()
     ): DownloadService {
         if (downloadService == null) {
             synchronized(this) {
@@ -20,13 +24,7 @@ internal object RetrofitInstance {
                     downloadService = Retrofit
                         .Builder()
                         .baseUrl(DownloadConst.BASE_URL)
-                        .client(
-                            OkHttpClient
-                                .Builder()
-                                .connectTimeout(connectTimeOutInMs, TimeUnit.MILLISECONDS)
-                                .readTimeout(readTimeOutInMs, TimeUnit.MILLISECONDS)
-                                .build()
-                        )
+                        .client(okHttpClient)
                         .build()
                         .create(DownloadService::class.java)
                 }

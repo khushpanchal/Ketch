@@ -138,10 +138,6 @@ internal class DownloadManager(
 
         val inputDataBuilder = Data.Builder()
             .putString(DownloadConst.KEY_DOWNLOAD_REQUEST, downloadRequest.toJson())
-            .putString(
-                DownloadConst.KEY_DOWNLOAD_CONFIG,
-                downloadConfig.toJson()
-            )
             .putString(DownloadConst.KEY_NOTIFICATION_CONFIG, notificationConfig.toJson())
 
         val inputData = inputDataBuilder.build()
@@ -396,13 +392,13 @@ internal class DownloadManager(
         }
     }
 
-    fun clearDbAsync(id: Int) {
+    fun clearDbAsync(id: Int, deleteFile: Boolean) {
         scope.launch {
-            cancel(id)
+            workManager.cancelUniqueWork(id.toString())
             val downloadEntity = downloadDao.find(id)
             val path = downloadEntity?.path
             val fileName = downloadEntity?.fileName
-            if (path != null && fileName != null) {
+            if (path != null && fileName != null && deleteFile) {
                 deleteFileIfExists(path, fileName)
             }
             removeNotification(context, id) // In progress notification
@@ -411,14 +407,14 @@ internal class DownloadManager(
         }
     }
 
-    fun clearDbAsync(tag: String) {
+    fun clearDbAsync(tag: String, deleteFile: Boolean) {
         scope.launch {
             downloadDao.getAllEntityByTag(tag).forEach {
-                cancel(it.id)
+                workManager.cancelUniqueWork(it.id.toString())
                 val downloadEntity = downloadDao.find(it.id)
                 val path = downloadEntity?.path
                 val fileName = downloadEntity?.fileName
-                if (path != null && fileName != null) {
+                if (path != null && fileName != null && deleteFile) {
                     deleteFileIfExists(path, fileName)
                 }
                 downloadDao.remove(it.id)
@@ -428,14 +424,14 @@ internal class DownloadManager(
         }
     }
 
-    fun clearAllDbAsync() {
+    fun clearAllDbAsync(deleteFile: Boolean) {
         scope.launch {
             downloadDao.getAllEntity().forEach {
-                cancel(it.id)
+                workManager.cancelUniqueWork(it.id.toString())
                 val downloadEntity = downloadDao.find(it.id)
                 val path = downloadEntity?.path
                 val fileName = downloadEntity?.fileName
-                if (path != null && fileName != null) {
+                if (path != null && fileName != null && deleteFile) {
                     deleteFileIfExists(path, fileName)
                 }
                 removeNotification(context, it.id) // In progress notification
@@ -445,14 +441,14 @@ internal class DownloadManager(
         }
     }
 
-    fun clearDbAsync(timeInMillis: Long) {
+    fun clearDbAsync(timeInMillis: Long, deleteFile: Boolean) {
         scope.launch {
             downloadDao.getEntityTillTime(timeInMillis).forEach {
-                cancel(it.id)
+                workManager.cancelUniqueWork(it.id.toString())
                 val downloadEntity = downloadDao.find(it.id)
                 val path = downloadEntity?.path
                 val fileName = downloadEntity?.fileName
-                if (path != null && fileName != null) {
+                if (path != null && fileName != null && deleteFile) {
                     deleteFileIfExists(path, fileName)
                 }
                 downloadDao.remove(it.id)

@@ -24,6 +24,8 @@ import com.ketch.Ketch
 import com.ketch.Status
 import com.khush.sample.databinding.FragmentMainBinding
 import com.khush.sample.databinding.ItemFileBinding
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -147,7 +149,7 @@ class MainFragment : Fragment() {
         fragmentMainBinding.bt2.text = "Video 2"
         fragmentMainBinding.bt2.setOnClickListener {
             ketch.download(
-                url = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_2.mp4",
                 tag = "Video",
@@ -158,7 +160,7 @@ class MainFragment : Fragment() {
         fragmentMainBinding.bt3.text = "Video 3"
         fragmentMainBinding.bt3.setOnClickListener {
             ketch.download(
-                url = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_3.mp4",
                 tag = "Video",
@@ -198,14 +200,14 @@ class MainFragment : Fragment() {
                 metaData = "158"
             )
             ketch.download(
-                url = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_2.mp4",
                 tag = "Video",
                 metaData = "169"
             )
             ketch.download(
-                url = "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_3.mp4",
                 tag = "Video",
@@ -239,6 +241,7 @@ class MainFragment : Fragment() {
         viewLifecycleOwner.lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 ketch.observeDownloads()
+                    .flowOn(Dispatchers.IO)
                     .collect {
                         adapter.submitList(it)
                     }
@@ -271,11 +274,11 @@ class FilesAdapter(private val listener: FileClickListener) :
             binding.progressBar.progress = downloadModel.progress
             binding.progressText.text =
                 downloadModel.progress.toString() + "%/" + Util.getTotalLengthText(downloadModel.total) + ", "
-            binding.size.text = Util.getTimeLeftText(
+            binding.size.text = Util.getCompleteText(
                 downloadModel.speedInBytePerMs,
                 downloadModel.progress,
                 downloadModel.total
-            ) + ", " + Util.getSpeedText(downloadModel.speedInBytePerMs)
+            )
 
             binding.downloadButton.setOnClickListener {
                 listener.onDownloadClick(downloadModel)
