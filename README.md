@@ -11,7 +11,7 @@
 
 # About Ketch
 
-Ketch is simple, powerful, customisable file downloader library for Android built entirely in Kotlin. It simplifies the process of downloading files in Android applications by leveraging the power of WorkManager. Ketch guarantees the download irrespective of application state.
+Ketch is a simple, powerful, customisable file downloader library for Android built entirely in Kotlin. It simplifies the process of downloading files in Android applications by leveraging the power of WorkManager. Ketch guarantees the download irrespective of application state.
 
 <p align="center">
   <img height="500" alt = "High level design" src=https://raw.githubusercontent.com/khushpanchal/Ketch/master/assets/Sample_app.png >
@@ -20,13 +20,13 @@ Ketch is simple, powerful, customisable file downloader library for Android buil
 # Why use Ketch
 
 - Ketch can download any type of file. (jpg, png, gif, mp4, mp3, pdf, apk and many more)
-- Ketch guarantees file download unless cancelled explicitly or download is failed.
-- Ketch provide all download info including speed, file size, progress.
-- Ketch provide option to pause, resume, cancel, retry and delete the download file.
-- Ketch provide option to observe download items (or single download item) as Flow.
+- Ketch guarantees file download unless canceled explicitly or download is failed.
+- Ketch provides all download info including speed, file size, progress.
+- Ketch provides option to pause, resume, cancel, retry and delete the download file.
+- Ketch provides option to observe download items (or single download item) as Flow.
 - Ketch can download multiple files in parallel.
-- Ketch support large file downloads.
-- Ketch provide various customisation including custom timeout and custom notification.
+- Ketch supports large file downloads.
+- Ketch provides various customisation including custom timeout, custom okhttp client and custom notification.
 - Ketch is simple and very easy to use.
 - Ketch provide notification for each download providing download info (speed, time left, total size, progress).
 - Ketch includes option to pause, resume, retry and cancel download from notification.
@@ -58,7 +58,7 @@ dependencyResolutionManagement {
    
 ```Groovy
 dependencies {
-  implementation 'com.github.khushpanchal:Ketch:2.0.1' // Use latest available version
+  implementation 'com.github.khushpanchal:Ketch:2.0.2' // Use latest available version
 }
 ```
 
@@ -83,6 +83,7 @@ dependencies {
       lifecycleScope.launch {
         repeatOnLifecycle(Lifecycle.State.STARTED) {
           ketch.observeDownloadById(id)
+            .flowOn(Dispatchers.IO)
             .collect { downloadModel -> 
               // use downloadModel
             }
@@ -90,7 +91,8 @@ dependencies {
       }
     ```
     
-  ### Important Note: Add the appropriate storage permission based on API level or onFailure(error) callback will be triggered. Check out sample app for reference.
+  #### Important Note 1: Add the appropriate storage permission based on API level or onFailure(error) callback will be triggered. Check out sample app for reference.
+  #### Important Note 2: Add FOREGROUND_SERVICE_DATA_SYNC, WAKE_LOCK, INTERNET permission. Check out sample app for reference.
   
 - To cancel the download
   
@@ -120,15 +122,17 @@ dependencies {
 
   ```Kotlin
       ketch.clearDb(downloadModel.id) // other options: clearDb(tag), clearAllDb(), clearDb(timeInMillis)
+      ketch.clearDb(downloadModel.id, false) // Pass "false" to skip the actual file deletion (only clear entry from DB)
   ```
 
-- Observing: Provides state flow of download items (Each item carries download info like url, fileName, path, tag, id, timeQueued, status, progress, length, speed, lastModified, metaData, failureReson, eTag)
+- Observing: Provides state flow of download items (Each item carries download info like url, fileName, path, tag, id, timeQueued, status, progress, length, speed, lastModified, metaData, failureReason, eTag)
 
   ```Kotlin
     //To observe from Fragment
     viewLifecycleOwner.lifecycleScope.launch {
       repeatOnLifecycle(Lifecycle.State.STARTED) {
         ketch.observeDownloads()
+          .flowOn(Dispatchers.IO)
           .collect { 
              //set items to adapter
           }
@@ -182,6 +186,18 @@ dependencies {
         connectTimeOutInMs = 20000L, //Default: 10000L
         readTimeOutInMs = 15000L //Default: 10000L
       )
+    ).build(this)
+  ```
+
+- Custom OKHttp: Provides custom okhttp client
+
+  ```Kotlin
+    ketch = Ketch.builder().setOkHttpClient(
+      okHttpClient = OkHttpClient
+        .Builder()
+        .connectTimeout(10000L)
+        .readTimeout(10000L)
+        .build()
     ).build(this)
   ```
   
