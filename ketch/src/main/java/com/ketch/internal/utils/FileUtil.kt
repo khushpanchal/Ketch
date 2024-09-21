@@ -9,6 +9,10 @@ import kotlin.experimental.and
 
 internal object FileUtil {
 
+    fun getTempFileForFile(file: File): File{
+        return File(file.absolutePath+".temp")
+    }
+
     fun getFileNameFromUrl(url: String): String {
         val guessFileName = URLUtil.guessFileName(url, null, null)
         return UUID.randomUUID().toString() + "-" + guessFileName
@@ -41,6 +45,10 @@ internal object FileUtil {
         val file = File(path, name)
         if (file.exists()) {
             file.delete()
+        }
+
+        getTempFileForFile(file).let {
+            if (it.exists()) it.delete()
         }
     }
 }
