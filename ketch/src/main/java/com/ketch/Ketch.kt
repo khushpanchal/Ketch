@@ -368,6 +368,16 @@ class Ketch private constructor(
     }
 
     /**
+     * Clear entries from database and delete files with given [status]
+     *
+     * @param status Status associated with the download
+     * @param deleteFile delete the actual file from the system
+     */
+    fun clearDb(status: Status, deleteFile: Boolean = true) {
+        downloadManager.clearDbAsync(status, deleteFile)
+    }
+
+    /**
      * Clear entries from database and delete files with given [tag]
      *
      * @param tag Tag associated with the download
@@ -417,5 +427,13 @@ class Ketch private constructor(
      * @return List of [DownloadModel]
      */
     suspend fun getAllDownloads() = downloadManager.getAllDownloads()
+
+    /**
+     * Suspend function to get list of all Downloads with given [status]
+     *
+     * @param status Status associated with the download
+     * @return List of [DownloadModel]
+     */
+    suspend fun getAllDownloads(status: Status) = downloadManager.getAllDownloads(status)
 
 }

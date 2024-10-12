@@ -424,6 +424,23 @@ internal class DownloadManager(
         }
     }
 
+    fun clearDbAsync(status: Status, deleteFile: Boolean) {
+        scope.launch {
+            downloadDao.getAllEntityByStatus(status).forEach {
+                workManager.cancelUniqueWork(it.id.toString())
+                val downloadEntity = downloadDao.find(it.id)
+                val path = downloadEntity?.path
+                val fileName = downloadEntity?.fileName
+                if (path != null && fileName != null && deleteFile) {
+                    deleteFileIfExists(path, fileName)
+                }
+                downloadDao.remove(it.id)
+                removeNotification(context, it.id) // In progress notification
+                removeNotification(context, it.id + 1) // Cancelled, Paused, Failed, Success notification
+            }
+        }
+    }
+
     fun clearAllDbAsync(deleteFile: Boolean) {
         scope.launch {
             downloadDao.getAllEntity().forEach {
@@ -478,6 +495,14 @@ internal class DownloadManager(
         }
     }
 
+    fun observeDownloadsByStatus(status: Status): Flow<List<DownloadModel>> {
+        return downloadDao.getAllEntityByStatusFlow(status).map { entityList ->
+            entityList.map { entity ->
+                entity.toDownloadModel()
+            }
+        }
+    }
+
     fun observeAllDownloads(): Flow<List<DownloadModel>> {
         return downloadDao.getAllEntityFlow().map { entityList ->
             entityList.map { entity ->
@@ -486,10 +511,15 @@ internal class DownloadManager(
         }
     }
 
+    suspend fun getAllDownloads(status: Status): List<DownloadModel> {
+        return downloadDao.getAllEntityByStatus(status).map { entity ->
+            entity.toDownloadModel()
+        }
+    }
+
     suspend fun getAllDownloads(): List<DownloadModel> {
         return downloadDao.getAllEntity().map { entity ->
             entity.toDownloadModel()
         }
     }
-
 }
