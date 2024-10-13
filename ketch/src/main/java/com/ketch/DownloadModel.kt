@@ -11,6 +11,7 @@ package com.ketch
  * @property headers Optional headers sent when making api call for file download
  * @property timeQueued First time in millisecond when download was queued into the database
  * @property status Current [Status] of the download
+ * @property downloaded Downloaded size of file in bytes
  * @property total Total size of file in bytes
  * @property progress Current download progress in Int between 0 and 100
  * @property speedInBytePerMs Current speed of download in bytes per second
@@ -29,6 +30,7 @@ data class DownloadModel(
     val headers: HashMap<String, String>,
     val timeQueued: Long,
     val status: Status,
+    val downloaded: Long,
     val total: Long,
     val progress: Int,
     val speedInBytePerMs: Float,

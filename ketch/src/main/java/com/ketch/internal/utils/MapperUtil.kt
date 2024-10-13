@@ -15,6 +15,7 @@ internal fun DownloadEntity.toDownloadModel() =
         headers = WorkUtil.jsonToHashMap(headersJson),
         timeQueued = timeQueued,
         status = Status.entries.find { it.name == status } ?: Status.DEFAULT,
+        downloaded = downloadedBytes,
         total = totalBytes,
         progress = if (totalBytes.toInt() != 0) ((downloadedBytes * 100) / totalBytes).toInt() else 0,
         speedInBytePerMs = speedInBytePerMs,
