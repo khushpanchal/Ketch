@@ -215,6 +215,10 @@ internal class DownloadNotificationManager(
                     NotificationConst.KEY_NOTIFICATION_SMALL_ICON,
                     notificationConfig.smallIcon
                 )
+                putExtra(
+                    NotificationConst.KEY_NOFITFICATION_COMPLETED,
+                    notificationConfig.contentText.success
+                )
                 putExtra(DownloadConst.KEY_FILE_NAME, fileName)
                 putExtra(DownloadConst.KEY_LENGTH, totalLength)
                 putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
@@ -248,6 +252,10 @@ internal class DownloadNotificationManager(
                     NotificationConst.KEY_NOTIFICATION_SMALL_ICON,
                     notificationConfig.smallIcon
                 )
+                putExtra(
+                    NotificationConst.KEY_NOTIFICATION_FAILED,
+                    notificationConfig.contentText.failed
+                )
                 putExtra(DownloadConst.KEY_FILE_NAME, fileName)
                 putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
                 putExtra(NotificationConst.KEY_NOTIFICATION_ID, notificationId)
@@ -280,6 +288,10 @@ internal class DownloadNotificationManager(
                     NotificationConst.KEY_NOTIFICATION_SMALL_ICON,
                     notificationConfig.smallIcon
                 )
+                putExtra(
+                    NotificationConst.KEY_NOTIFICATION_CANCELLED,
+                    notificationConfig.contentText.cancelled
+                )
                 putExtra(DownloadConst.KEY_FILE_NAME, fileName)
                 putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
                 putExtra(NotificationConst.KEY_NOTIFICATION_ID, notificationId)
@@ -311,6 +323,10 @@ internal class DownloadNotificationManager(
                 putExtra(
                     NotificationConst.KEY_NOTIFICATION_SMALL_ICON,
                     notificationConfig.smallIcon
+                )
+                putExtra(
+                    NotificationConst.KEY_NOTIFICATION_PAUSED,
+                    notificationConfig.contentText.pause
                 )
                 putExtra(DownloadConst.KEY_FILE_NAME, fileName)
                 putExtra(DownloadConst.KEY_PROGRESS, currentProgress)

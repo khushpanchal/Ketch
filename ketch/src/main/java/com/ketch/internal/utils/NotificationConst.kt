@@ -12,6 +12,14 @@ internal object NotificationConst {
     const val KEY_NOTIFICATION_SMALL_ICON = "key_small_notification_icon"
     const val DEFAULT_VALUE_NOTIFICATION_SMALL_ICON = -1
     const val KEY_NOTIFICATION_ID = "key_notification_id"
+    const val KEY_NOFITFICATION_COMPLETED = "key_notification_completed"
+    const val DEFAULT_VALUE_NOTIFICATION_COMPLETED = "Download completed."
+    const val KEY_NOTIFICATION_FAILED = "key_notification_failed"
+    const val DEFAULT_VALUE_NOTIFICATION_FAILED = "Download failed."
+    const val KEY_NOTIFICATION_PAUSED = "key_notification_paused"
+    const val DEFAULT_VALUE_NOTIFICATION_PAUSED = "Download paused."
+    const val KEY_NOTIFICATION_CANCELLED = "key_notification_cancelled"
+    const val DEFAULT_VALUE_NOTIFICATION_CANCELLED = "Download cancelled."
 
     // Actions
     const val ACTION_NOTIFICATION_DISMISSED = "ACTION_NOTIFICATION_DISMISSED"

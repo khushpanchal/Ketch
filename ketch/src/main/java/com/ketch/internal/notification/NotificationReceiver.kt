@@ -8,6 +8,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Bundle
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -174,20 +175,7 @@ internal class NotificationReceiver : BroadcastReceiver() {
             var notificationBuilder =
                 NotificationCompat.Builder(context, NotificationConst.NOTIFICATION_CHANNEL_ID)
                     .setSmallIcon(notificationSmallIcon)
-                    .setContentText(
-                        when (intent.action) {
-                            NotificationConst.ACTION_DOWNLOAD_COMPLETED ->
-                                "Download successful. (${
-                                    TextUtil.getTotalLengthText(
-                                        totalLength
-                                    )
-                                })"
-
-                            NotificationConst.ACTION_DOWNLOAD_FAILED -> "Download failed."
-                            NotificationConst.ACTION_DOWNLOAD_PAUSED -> "Download paused."
-                            else -> "Download cancelled."
-                        }
-                    )
+                    .setContentText(getNotificationContentText(intent.extras, totalLength)[intent.action])
                     .setContentTitle(fileName)
                     .setContentIntent(pendingIntentOpen)
                     .setOnlyAlertOnce(true)
@@ -246,4 +234,26 @@ internal class NotificationReceiver : BroadcastReceiver() {
         channel.description = notificationChannelDescription
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
     }
+
+    /**
+     * Get notification content text
+     *
+     * @param bundle
+     * @param totalLength
+     * @return
+     */
+    private fun getNotificationContentText(bundle: Bundle?, totalLength: Long) = mapOf(
+        NotificationConst.ACTION_DOWNLOAD_COMPLETED to bundle?.getString(
+            NotificationConst.KEY_NOFITFICATION_COMPLETED
+        ) + " ${TextUtil.getTotalLengthText(totalLength)}",
+        NotificationConst.ACTION_DOWNLOAD_FAILED to bundle?.getString(
+            NotificationConst.KEY_NOTIFICATION_FAILED
+        ),
+        NotificationConst.ACTION_DOWNLOAD_PAUSED to bundle?.getString(
+            NotificationConst.KEY_NOTIFICATION_PAUSED
+        ),
+        NotificationConst.ACTION_DOWNLOAD_CANCELLED to bundle?.getString(
+            NotificationConst.KEY_NOTIFICATION_CANCELLED
+        )
+    )
 }
