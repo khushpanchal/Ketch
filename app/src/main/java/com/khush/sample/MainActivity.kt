@@ -1,14 +1,12 @@
 package com.khush.sample
 
-import android.app.NotificationManager
-import android.content.Intent
+import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
-import android.provider.Settings
-import android.util.Log
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.snackbar.Snackbar
 import com.khush.sample.databinding.ActivityMainBinding
@@ -18,9 +16,20 @@ class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private lateinit var snackbar: Snackbar
 
+    private val requestPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+        Toast.makeText(this, "$it", Toast.LENGTH_SHORT).show()
+    }
+
+    companion object {
+        private const val TAG = "susTest"
+    }
+
+    @SuppressLint("NewApi")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.i("Testing", "RequestId " + intent.extras?.getInt("key_request_id"))
+        if (checkSelfPermission(WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissionLauncher.launch(WRITE_EXTERNAL_STORAGE)
+        }
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
@@ -32,35 +41,6 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        var permissions = arrayOf<String>()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N && !getSystemService(NotificationManager::class.java).areNotificationsEnabled()) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                permissions = permissions.plus(android.Manifest.permission.POST_NOTIFICATIONS)
-            }
-        }
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
-            snackbar =
-                Snackbar.make(binding.root, "Allow storage permission", Snackbar.LENGTH_INDEFINITE)
-                    .setAction("Settings") {
-                        val getpermission = Intent()
-                        getpermission.action = Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
-                        startActivity(getpermission)
-                        snackbar.dismiss()
-                    }
-            snackbar.show()
-        } else if (checkSelfPermission(android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-                permissions = permissions.plus(android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-            }
-        }
-
-        if (permissions.isNotEmpty()) {
-            requestPermissions(permissions, 101)
-            Toast.makeText(this, "Notification and Storage Permission Required", Toast.LENGTH_SHORT)
-                .show()
-            return
-        }
 
         openTestFragment()
     }
