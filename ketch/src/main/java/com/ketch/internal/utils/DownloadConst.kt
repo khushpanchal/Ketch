@@ -1,6 +1,8 @@
 package com.ketch.internal.utils
 
 internal object DownloadConst {
+    const val VALUE_DISABLE_MAX_PARALLEL_DOWNLOAD = -1
+    const val DEFAULT_VALUE_MAX_PARALLEL_DOWNLOAD = VALUE_DISABLE_MAX_PARALLEL_DOWNLOAD
     const val DEFAULT_VALUE_READ_TIMEOUT_MS = 10000L
     const val DEFAULT_VALUE_CONNECT_TIMEOUT_MS = 10000L
     const val BASE_URL = "http://localhost/"

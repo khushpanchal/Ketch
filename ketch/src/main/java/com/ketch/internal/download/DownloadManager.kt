@@ -4,11 +4,13 @@ import android.content.Context
 import androidx.work.Constraints
 import androidx.work.Data
 import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequest
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import com.ketch.DownloadConfig
 import com.ketch.DownloadModel
+import com.ketch.DownloadRequest
 import com.ketch.Logger
 import com.ketch.NotificationConfig
 import com.ketch.Status
@@ -16,6 +18,7 @@ import com.ketch.internal.database.DownloadDao
 import com.ketch.internal.database.DownloadEntity
 import com.ketch.internal.notification.DownloadNotificationManager
 import com.ketch.internal.utils.DownloadConst
+import com.ketch.internal.utils.DownloadConst.VALUE_DISABLE_MAX_PARALLEL_DOWNLOAD
 import com.ketch.internal.utils.FileUtil.deleteFileIfExists
 import com.ketch.internal.utils.UserAction
 import com.ketch.internal.utils.WorkUtil
@@ -56,7 +59,6 @@ internal class DownloadManager(
     init {
 
         scope.launch {
-            // Observe work infos, only for logging purpose
             workManager.getWorkInfosByTagFlow(DownloadConst.TAG_DOWNLOAD).flowOn(Dispatchers.IO)
                 .collectLatest { workInfos ->
                     for (workInfo in workInfos) {
@@ -96,6 +98,7 @@ internal class DownloadManager(
                             }
 
                             WorkInfo.State.SUCCEEDED -> {
+                                onWorkFinish()
                                 val downloadEntity = findDownloadEntityFromUUID(workInfo.id)
                                 logger.log(
                                     msg = "Download Success. FileName: ${downloadEntity?.fileName}, " +
@@ -104,6 +107,7 @@ internal class DownloadManager(
                             }
 
                             WorkInfo.State.FAILED -> {
+                                onWorkFinish()
                                 val downloadEntity = findDownloadEntityFromUUID(workInfo.id)
                                 logger.log(
                                     msg = "Download Failed. FileName: ${downloadEntity?.fileName}, " +
@@ -113,6 +117,7 @@ internal class DownloadManager(
                             }
 
                             WorkInfo.State.CANCELLED -> {
+                                onWorkFinish()
                                 val downloadEntity = findDownloadEntityFromUUID(workInfo.id)
                                 if (downloadEntity?.userAction == UserAction.PAUSE.toString()) {
                                     logger.log(
@@ -127,15 +132,59 @@ internal class DownloadManager(
                                 }
                             }
 
-                            WorkInfo.State.BLOCKED -> {} // no use case
+                            WorkInfo.State.BLOCKED -> {
+                                onWorkFinish()
+                            } // no use case
                         }
                     }
                 }
         }
     }
 
-    private suspend fun download(downloadRequest: DownloadRequest) {
+    private suspend fun onWorkFinish() {
+        if (downloadConfig.maxParallelDownloads != VALUE_DISABLE_MAX_PARALLEL_DOWNLOAD)
+            checkIfQueuedAnyDownloadsCanBeStarted()
+    }
 
+    private suspend fun checkIfQueuedAnyDownloadsCanBeStarted() {
+        if (canDownloadMore()) {
+            enqueueDownloads(
+                downloadDao.getAllQueuedEntity().map { it.toDownloadRequest() }
+            )
+        }
+    }
+
+    private fun canDownloadMore(): Boolean {
+        val maxParallelDownloads = downloadConfig.maxParallelDownloads
+        val parallelDownloadEnabled = maxParallelDownloads == VALUE_DISABLE_MAX_PARALLEL_DOWNLOAD
+        return parallelDownloadEnabled || downloadDao.getInProgressOrStartedEntityCount() < maxParallelDownloads
+    }
+
+    private fun getAvailableDownloadRequestCount(): Int {
+        val maxParallelDownloads = downloadConfig.maxParallelDownloads
+        val parallelDownloadEnabled = maxParallelDownloads != VALUE_DISABLE_MAX_PARALLEL_DOWNLOAD
+        return if (parallelDownloadEnabled) maxParallelDownloads - downloadDao.getInProgressOrStartedEntityCount()
+        else 100
+    }
+
+    private suspend fun enqueueDownloads(downloadRequests: List<DownloadRequest>) {
+        val availableDownloadCount = getAvailableDownloadRequestCount()
+        downloadRequests.forEachIndexed{ index, downloadRequest ->
+            val downloadWorkRequest = addDownloadToQueue(downloadRequest)
+            if (index < availableDownloadCount) {
+                download(downloadRequest, downloadWorkRequest)
+            }
+        }
+    }
+
+    private suspend fun enqueueDownload(downloadRequest: DownloadRequest) {
+        val downloadWorkRequest = addDownloadToQueue(downloadRequest)
+        if (canDownloadMore()) {
+            download(downloadRequest, downloadWorkRequest)
+        }
+    }
+
+    private suspend fun addDownloadToQueue(downloadRequest: DownloadRequest): OneTimeWorkRequest {
         val inputDataBuilder = Data.Builder()
             .putString(DownloadConst.KEY_DOWNLOAD_REQUEST, downloadRequest.toJson())
             .putString(DownloadConst.KEY_NOTIFICATION_CONFIG, notificationConfig.toJson())
@@ -196,7 +245,10 @@ internal class DownloadManager(
             )
             deleteFileIfExists(downloadRequest.path, downloadRequest.fileName)
         }
+        return downloadWorkRequest
+    }
 
+    private fun download(downloadRequest: DownloadRequest, downloadWorkRequest: OneTimeWorkRequest) {
         workManager.enqueueUniqueWork(
             downloadRequest.id.toString(),
             ExistingWorkPolicy.KEEP,
@@ -213,18 +265,22 @@ internal class DownloadManager(
                     lastModified = System.currentTimeMillis()
                 )
             )
-            download(
-                DownloadRequest(
-                    url = downloadEntity.url,
-                    path = downloadEntity.path,
-                    fileName = downloadEntity.fileName,
-                    tag = downloadEntity.tag,
-                    id = downloadEntity.id,
-                    headers = WorkUtil.jsonToHashMap(downloadEntity.headersJson),
-                    metaData = downloadEntity.metaData
-                )
+            enqueueDownload(
+                downloadEntity.toDownloadRequest()
             )
         }
+    }
+
+    private fun DownloadEntity.toDownloadRequest() : DownloadRequest {
+        return DownloadRequest(
+            url = url,
+            path = path,
+            fileName = fileName,
+            tag = tag,
+            id = id,
+            headers = WorkUtil.jsonToHashMap(headersJson),
+            metaData = metaData,
+        )
     }
 
     private suspend fun cancel(id: Int) {
@@ -278,16 +334,8 @@ internal class DownloadManager(
                     lastModified = System.currentTimeMillis()
                 )
             )
-            download(
-                DownloadRequest(
-                    url = downloadEntity.url,
-                    path = downloadEntity.path,
-                    fileName = downloadEntity.fileName,
-                    tag = downloadEntity.tag,
-                    id = downloadEntity.id,
-                    headers = WorkUtil.jsonToHashMap(downloadEntity.headersJson),
-                    metaData = downloadEntity.metaData
-                )
+            enqueueDownload(
+                downloadEntity.toDownloadRequest()
             )
         }
     }
@@ -460,7 +508,13 @@ internal class DownloadManager(
 
     fun downloadAsync(downloadRequest: DownloadRequest) {
         scope.launch {
-            download(downloadRequest)
+            enqueueDownload(downloadRequest)
+        }
+    }
+
+    fun downloadAsync(downloadRequests: List<DownloadRequest>) {
+        scope.launch {
+            enqueueDownloads(downloadRequests)
         }
     }
 

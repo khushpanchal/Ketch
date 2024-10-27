@@ -5,7 +5,6 @@ import androidx.work.WorkManager
 import com.ketch.internal.database.DatabaseInstance
 import com.ketch.internal.download.ApiResponseHeaderChecker
 import com.ketch.internal.download.DownloadManager
-import com.ketch.internal.download.DownloadRequest
 import com.ketch.internal.network.RetrofitInstance
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.DownloadLogger
@@ -81,7 +80,7 @@ import java.util.concurrent.TimeUnit
  * @property logger [Logger] implementation to print logs
  * @constructor Create empty Ketch
  */
-@Suppress("TooManyFunctions")
+@Suppress("TooManyFunctions", "unused")
 class Ketch private constructor(
     private val context: Context,
     private var downloadConfig: DownloadConfig,
@@ -203,6 +202,17 @@ class Ketch private constructor(
         )
         downloadManager.downloadAsync(downloadRequest)
         return downloadRequest.id
+    }
+
+    fun downloadMultiple(downloadRequests: List<DownloadRequest>) {
+        downloadRequests.forEach {
+            it.apply {
+                require(url.isNotEmpty() && path.isNotEmpty() && fileName.isNotEmpty()) {
+                    "Missing ${if (url.isEmpty()) "url" else if (path.isEmpty()) "path" else "fileName"}"
+                }
+            }
+        }
+        downloadManager.downloadAsync(downloadRequests)
     }
 
     /**

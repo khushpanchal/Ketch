@@ -3,7 +3,6 @@ package com.khush.sample
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
-import android.os.Environment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -22,6 +21,7 @@ import androidx.recyclerview.widget.SimpleItemAnimator
 import com.ketch.DownloadModel
 import com.ketch.Ketch
 import com.ketch.Status
+import com.ketch.DownloadRequest
 import com.khush.sample.databinding.FragmentMainBinding
 import com.khush.sample.databinding.ItemFileBinding
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +45,8 @@ class MainFragment : Fragment() {
         }
     }
 
+    private val downloadDirectory by lazy { requireContext().cacheDir.path }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
@@ -66,9 +68,7 @@ class MainFragment : Fragment() {
                     if (file.exists()) {
                         val uri = this@MainFragment.context?.applicationContext?.let {
                             FileProvider.getUriForFile(
-                                it,
-                                it.packageName + ".provider",
-                                file
+                                it, it.packageName + ".provider", file
                             )
                         }
                         if (uri != null) {
@@ -84,9 +84,7 @@ class MainFragment : Fragment() {
                         }
                     } else {
                         Toast.makeText(
-                            this@MainFragment.context,
-                            "Something went wrong",
-                            Toast.LENGTH_SHORT
+                            this@MainFragment.context, "Something went wrong", Toast.LENGTH_SHORT
                         ).show()
                     }
                 }
@@ -130,8 +128,7 @@ class MainFragment : Fragment() {
             LinearLayoutManager(this.context, LinearLayoutManager.VERTICAL, false)
         fragmentMainBinding.recyclerView.addItemDecoration(
             DividerItemDecoration(
-                this.context,
-                DividerItemDecoration.VERTICAL
+                this.context, DividerItemDecoration.VERTICAL
             )
         )
 
@@ -139,7 +136,7 @@ class MainFragment : Fragment() {
         fragmentMainBinding.bt1.setOnClickListener {
             ketch.download(
                 url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                path = downloadDirectory,
                 fileName = "Sample_Video_1.mp4",
                 tag = "Video",
                 metaData = "158"
@@ -150,7 +147,7 @@ class MainFragment : Fragment() {
         fragmentMainBinding.bt2.setOnClickListener {
             ketch.download(
                 url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                path = downloadDirectory,
                 fileName = "Sample_Video_2.mp4",
                 tag = "Video",
                 metaData = "169"
@@ -161,7 +158,7 @@ class MainFragment : Fragment() {
         fragmentMainBinding.bt3.setOnClickListener {
             ketch.download(
                 url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
-                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                path = downloadDirectory,
                 fileName = "Sample_Video_3.mp4",
                 tag = "Video",
                 metaData = "48"
@@ -172,7 +169,7 @@ class MainFragment : Fragment() {
         fragmentMainBinding.bt4.setOnClickListener {
             ketch.download(
                 url = "https://picsum.photos/200/300",
-                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                path = downloadDirectory,
                 fileName = "Sample_Image_1.jpg",
                 tag = "Document",
                 metaData = "1"
@@ -183,7 +180,7 @@ class MainFragment : Fragment() {
         fragmentMainBinding.bt5.setOnClickListener {
             ketch.download(
                 url = "https://sample-videos.com/pdf/Sample-pdf-5mb.pdf",
-                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
+                path = downloadDirectory,
                 fileName = "Sample_Pdf_1.pdf",
                 tag = "Document",
                 metaData = "5"
@@ -192,47 +189,51 @@ class MainFragment : Fragment() {
 
         fragmentMainBinding.bt6.text = "Multiple"
         fragmentMainBinding.bt6.setOnClickListener {
-            ketch.download(
-                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
-                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Video_1.mp4",
-                tag = "Video",
-                metaData = "158"
-            )
-            ketch.download(
-                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
-                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Video_2.mp4",
-                tag = "Video",
-                metaData = "169"
-            )
-            ketch.download(
-                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
-                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Video_3.mp4",
-                tag = "Video",
-                metaData = "48"
-            )
-            ketch.download(
-                url = "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_30mb.mp4",
-                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Video_4.mp4",
-                tag = "Video",
-                metaData = "30"
-            )
-            ketch.download(
-                url = "https://picsum.photos/200/300",
-                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Image_1.jpg",
-                tag = "Document",
-                metaData = "1"
-            )
-            ketch.download(
-                url = "https://sample-videos.com/pdf/Sample-pdf-5mb.pdf",
-                path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Pdf_1.pdf",
-                tag = "Document",
-                metaData = "5"
+            ketch.downloadMultiple(
+                listOf(
+                    DownloadRequest(
+                        url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                        path = downloadDirectory,
+                        fileName = "Sample_Video_1.mp4",
+                        tag = "Video",
+                        metaData = "158",
+                    ),
+                    DownloadRequest(
+                        url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                        path = downloadDirectory,
+                        fileName = "Sample_Video_2.mp4",
+                        tag = "Video",
+                        metaData = "169",
+                    ),
+                    DownloadRequest(
+                        url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+                        path = downloadDirectory,
+                        fileName = "Sample_Video_3.mp4",
+                        tag = "Video",
+                        metaData = "48",
+                    ),
+                    DownloadRequest(
+                        url = "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_30mb.mp4",
+                        path = downloadDirectory,
+                        fileName = "Sample_Video_4.mp4",
+                        tag = "Video",
+                        metaData = "30",
+                    ),
+                    DownloadRequest(
+                        url = "https://picsum.photos/200/300",
+                        path = downloadDirectory,
+                        fileName = "Sample_Image_1.jpg",
+                        tag = "Document",
+                        metaData = "1",
+                    ),
+                    DownloadRequest(
+                        url = "https://sample-videos.com/pdf/Sample-pdf-5mb.pdf",
+                        path = downloadDirectory,
+                        fileName = "Sample_Pdf_1.pdf",
+                        tag = "Document",
+                        metaData = "5"
+                    ),
+                )
             )
         }
     }

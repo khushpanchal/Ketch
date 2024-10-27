@@ -1,10 +1,10 @@
-package com.ketch.internal.download
+package com.ketch
 
 import com.ketch.internal.utils.FileUtil.getUniqueId
 import kotlinx.serialization.Serializable
 
 @Serializable
-internal data class DownloadRequest(
+data class DownloadRequest(
     val url: String,
     val path: String,
     val fileName: String,
