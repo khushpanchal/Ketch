@@ -271,6 +271,20 @@ internal class DownloadManager(
         }
     }
 
+    private suspend fun resumeMultiple(downloadEntities: List<DownloadEntity>) {
+        downloadEntities.forEach { downloadEntity ->
+            downloadDao.update(
+                downloadEntity.copy(
+                    userAction = UserAction.RESUME.toString(),
+                    lastModified = System.currentTimeMillis()
+                )
+            )
+        }
+        enqueueDownloads(
+            downloadEntities.map { it.toDownloadRequest() }
+        )
+    }
+
     private fun DownloadEntity.toDownloadRequest() : DownloadRequest {
         return DownloadRequest(
             url = url,
@@ -352,19 +366,13 @@ internal class DownloadManager(
 
     fun resumeAsync(tag: String) {
         scope.launch {
-            downloadDao.getAllEntity().forEach {
-                if (it.tag == tag) {
-                    resume(it.id)
-                }
-            }
+            resumeMultiple(downloadDao.getAllEntityByTag(tag))
         }
     }
 
     fun resumeAllAsync() {
         scope.launch {
-            downloadDao.getAllEntity().forEach {
-                resume(it.id)
-            }
+            resumeMultiple(downloadDao.getAllEntity())
         }
     }
 
