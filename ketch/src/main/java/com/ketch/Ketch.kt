@@ -180,6 +180,7 @@ class Ketch private constructor(
      * @param headers Optional headers sent when making api call for file download
      * @return Unique Download ID associated with current download
      */
+    @Synchronized
     fun download(
         url: String,
         path: String,
@@ -193,10 +194,15 @@ class Ketch private constructor(
             "Missing ${if (url.isEmpty()) "url" else if (path.isEmpty()) "path" else "fileName"}"
         }
 
+        // This will create a temp file which will be renamed after successful download.
+        // This will also make sure each file name is unique.
+        val newFileName = FileUtil.resolveNamingConflicts(fileName, path)
+        FileUtil.createTempFileIfNotExists(path, newFileName)
+
         val downloadRequest = DownloadRequest(
             url = url,
             path = path,
-            fileName = fileName,
+            fileName = newFileName,
             tag = tag,
             headers = headers,
             metaData = metaData
@@ -417,5 +423,13 @@ class Ketch private constructor(
      * @return List of [DownloadModel]
      */
     suspend fun getAllDownloads() = downloadManager.getAllDownloads()
+
+    /**
+     * Suspend function to get download model by id
+     *
+     * @param id
+     * @return [DownloadModel] if present else null
+     */
+    suspend fun getDownloadModelById(id: Int) = downloadManager.getDownloadModelById(id)
 
 }

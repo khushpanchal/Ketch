@@ -9,8 +9,8 @@ import kotlin.experimental.and
 
 internal object FileUtil {
 
-    fun getTempFileForFile(file: File): File{
-        return File(file.absolutePath+".temp")
+    fun getTempFileForFile(file: File): File {
+        return File(file.absolutePath + ".temp")
     }
 
     fun getFileNameFromUrl(url: String): String {
@@ -49,6 +49,33 @@ internal object FileUtil {
 
         getTempFileForFile(file).let {
             if (it.exists()) it.delete()
+        }
+    }
+
+    // If file name already exist at given path, generate new file name with (1), (2) etc. suffix
+    fun resolveNamingConflicts(fileName: String, path: String): String {
+        var newFileName = fileName
+        var file = File(path, newFileName)
+        var tempFile = getTempFileForFile(file)
+        var counter = 1
+
+        while (file.exists() || tempFile.exists()) {
+            val name = fileName.substringBeforeLast(".")
+            val extension = fileName.substringAfterLast(".")
+            newFileName = "$name ($counter).$extension"
+            file = File(path, newFileName)
+            tempFile = getTempFileForFile(file)
+            counter++
+        }
+
+        return newFileName
+    }
+
+    fun createTempFileIfNotExists(path: String, fileName: String) {
+        val file = File(path, fileName)
+        val tempFile = getTempFileForFile(file)
+        if (!tempFile.exists()) {
+            tempFile.createNewFile()
         }
     }
 }

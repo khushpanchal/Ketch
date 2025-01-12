@@ -492,4 +492,8 @@ internal class DownloadManager(
         }
     }
 
+    suspend fun getDownloadModelById(id: Int): DownloadModel? {
+        return downloadDao.find(id)?.toDownloadModel()
+    }
+
 }
