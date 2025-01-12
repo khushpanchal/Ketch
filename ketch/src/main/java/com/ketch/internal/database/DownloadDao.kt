@@ -27,6 +27,9 @@ internal interface DownloadDao {
     @Query("SELECT * FROM downloads ORDER BY timeQueued ASC")
     fun getAllEntityFlow(): Flow<List<DownloadEntity>>
 
+    @Query("SELECT COUNT(*) FROM downloads WHERE status = 'PROGRESS' or status = 'STARTED'")
+    fun getInProgressOrStartedEntityCount() : Int
+
     @Query("SELECT * FROM downloads WHERE lastModified <= :timeMillis ORDER BY timeQueued ASC")
     fun getEntityTillTimeFlow(timeMillis: Long): Flow<List<DownloadEntity>>
 
@@ -38,6 +41,9 @@ internal interface DownloadDao {
 
     @Query("SELECT * FROM downloads ORDER BY timeQueued ASC")
     suspend fun getAllEntity(): List<DownloadEntity>
+
+    @Query("SELECT * FROM downloads WHERE status = 'QUEUED' ORDER BY timeQueued ASC")
+    suspend fun getAllQueuedEntity(): List<DownloadEntity>
 
     @Query("SELECT * FROM downloads WHERE lastModified <= :timeMillis ORDER BY timeQueued ASC")
     suspend fun getEntityTillTime(timeMillis: Long): List<DownloadEntity>

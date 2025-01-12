@@ -3,7 +3,7 @@ package com.ketch.internal.utils
 import android.content.Context
 import androidx.core.app.NotificationManagerCompat
 import com.ketch.NotificationConfig
-import com.ketch.internal.download.DownloadRequest
+import com.ketch.DownloadRequest
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
