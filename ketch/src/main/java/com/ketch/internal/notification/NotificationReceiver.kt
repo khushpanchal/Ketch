@@ -121,7 +121,7 @@ internal class NotificationReceiver : BroadcastReceiver() {
 
             // Open Application (Send the unique download request id in intent)
             val intentOpen = context.packageManager.getLaunchIntentForPackage(context.packageName)
-            intentOpen?.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+            intentOpen?.flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
             intentOpen?.putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
             val pendingIntentOpen =
                 PendingIntent.getActivity(
