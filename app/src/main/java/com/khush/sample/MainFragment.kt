@@ -138,9 +138,8 @@ class MainFragment : Fragment() {
         fragmentMainBinding.bt1.text = "Video 1"
         fragmentMainBinding.bt1.setOnClickListener {
             ketch.download(
-                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                url = "https://dl.bir-music.com/1403/04/04/Roozbeh%20Bemani%20-%20Video/Roozbeh%20Bemani%20-%20Tarik.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Video_1.mp4",
                 tag = "Video",
                 metaData = "158"
             )
@@ -149,9 +148,8 @@ class MainFragment : Fragment() {
         fragmentMainBinding.bt2.text = "Video 2"
         fragmentMainBinding.bt2.setOnClickListener {
             ketch.download(
-                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                url = "https://dl.bir-music.com/1403/07/15/Erfan%20Tahmasbi%20-%20Kojaei%20Video/Erfan%20Tahmasbi%20-%20Kojaei%20%28Live%20In%20Concert%29%20480.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Video_2.mp4",
                 tag = "Video",
                 metaData = "169"
             )
@@ -160,9 +158,8 @@ class MainFragment : Fragment() {
         fragmentMainBinding.bt3.text = "Video 3"
         fragmentMainBinding.bt3.setOnClickListener {
             ketch.download(
-                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+                url = "https://dl.bir-music.com/1402/09/08/Erfan%20Tahmasbi%20-%20Video/Erfan%20Tahmasbi%20-%20Matarsak%20%28Guitar%20Version%29%20%28720%29.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Video_3.mp4",
                 tag = "Video",
                 metaData = "48"
             )
@@ -173,7 +170,6 @@ class MainFragment : Fragment() {
             ketch.download(
                 url = "https://picsum.photos/200/300",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Image_1.jpg",
                 tag = "Document",
                 metaData = "1"
             )
@@ -184,7 +180,6 @@ class MainFragment : Fragment() {
             ketch.download(
                 url = "https://sample-videos.com/pdf/Sample-pdf-5mb.pdf",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Pdf_1.pdf",
                 tag = "Document",
                 metaData = "5"
             )
@@ -195,42 +190,36 @@ class MainFragment : Fragment() {
             ketch.download(
                 url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Video_1.mp4",
                 tag = "Video",
                 metaData = "158"
             )
             ketch.download(
                 url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Video_2.mp4",
                 tag = "Video",
                 metaData = "169"
             )
             ketch.download(
                 url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Video_3.mp4",
                 tag = "Video",
                 metaData = "48"
             )
             ketch.download(
                 url = "https://sample-videos.com/video321/mp4/720/big_buck_bunny_720p_30mb.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Video_4.mp4",
                 tag = "Video",
                 metaData = "30"
             )
             ketch.download(
                 url = "https://picsum.photos/200/300",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Image_1.jpg",
                 tag = "Document",
                 metaData = "1"
             )
             ketch.download(
                 url = "https://sample-videos.com/pdf/Sample-pdf-5mb.pdf",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
-                fileName = "Sample_Pdf_1.pdf",
                 tag = "Document",
                 metaData = "5"
             )
