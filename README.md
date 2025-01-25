@@ -76,10 +76,10 @@ dependencies {
       }
     ```
     
-  - Call the download() function, pass the url, fileName, path and observe the download status
+  - Call the download() function, pass the url, path, fileName and observe the download status
     
     ```Kotlin
-      val id = ketch.download(url, fileName, path)
+      val id = ketch.download(url, path, fileName)
       lifecycleScope.launch {
         repeatOnLifecycle(Lifecycle.State.STARTED) {
           ketch.observeDownloadById(id)
@@ -165,7 +165,7 @@ dependencies {
 - Provide headers with network request.
   
   ```Kotlin
-  ketch.download(url, fileName, path,
+  ketch.download(url, path, fileName,
    headers = headers, //Default: Empty hashmap
   )
   ```
@@ -173,7 +173,7 @@ dependencies {
 - Tag: Group various downloads by providing additional Tag. (This tag can be use to cancel, pause, resume, delete the download as well)
 
   ```Kotlin
-  ketch.download(url, fileName, path,
+  ketch.download(url, path, fileName,
    tag = tag, //Default: null
   )
   ```
