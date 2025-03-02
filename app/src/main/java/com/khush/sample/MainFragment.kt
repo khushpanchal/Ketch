@@ -135,10 +135,10 @@ class MainFragment : Fragment() {
             )
         )
 
-        fragmentMainBinding.bt1.text = "Video 1"
+        fragmentMainBinding.bt1.text = "ubuntu"
         fragmentMainBinding.bt1.setOnClickListener {
             ketch.download(
-                url = "https://dl.bir-music.com/1403/04/04/Roozbeh%20Bemani%20-%20Video/Roozbeh%20Bemani%20-%20Tarik.mp4",
+                url = "https://ubuntu.mobinhost.com/releases/24.04.2/ubuntu-24.04.2-desktop-amd64.iso",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 tag = "Video",
                 metaData = "158"
