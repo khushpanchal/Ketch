@@ -313,8 +313,8 @@ internal class DownloadNotificationManager(
                     notificationConfig.importance
                 )
                 putExtra(
-                    notificationConfig.channelDescription,
-                    NotificationConst.KEY_NOTIFICATION_CHANNEL_DESCRIPTION
+                    NotificationConst.KEY_NOTIFICATION_CHANNEL_DESCRIPTION,
+                    notificationConfig.channelDescription
                 )
                 putExtra(
                     NotificationConst.KEY_NOTIFICATION_SMALL_ICON,
