@@ -58,7 +58,7 @@ dependencyResolutionManagement {
    
 ```Groovy
 dependencies {
-  implementation 'com.github.khushpanchal:Ketch:2.0.2' // Use latest available version
+  implementation 'com.github.khushpanchal:Ketch:2.0.5' // Use latest available version
 }
 ```
 
