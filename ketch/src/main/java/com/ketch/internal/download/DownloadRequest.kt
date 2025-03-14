@@ -11,5 +11,6 @@ internal data class DownloadRequest(
     val tag: String,
     val id: Int = getUniqueId(url, path, fileName),
     val headers: HashMap<String, String> = hashMapOf(),
-    val metaData: String = ""
+    val metaData: String = "",
+    val supportPauseResume: Boolean = true,
 )

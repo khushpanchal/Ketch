@@ -13,6 +13,8 @@ import com.ketch.internal.utils.FileUtil
 import com.ketch.internal.utils.NotificationConst
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -89,6 +91,8 @@ class Ketch private constructor(
     private var logger: Logger,
     private var okHttpClient: OkHttpClient
 ) {
+
+    private val mutex = Mutex()
 
     companion object {
 
@@ -178,36 +182,63 @@ class Ketch private constructor(
      * @param tag Optional tag for each download to group the download into category
      * @param metaData Optional metaData set for adding any extra download info
      * @param headers Optional headers sent when making api call for file download
+     * @param supportPauseResume Optional flag to enable pause and resume functionality
      * @return Unique Download ID associated with current download
      */
-    @Synchronized
     fun download(
         url: String,
         path: String,
         fileName: String = FileUtil.getFileNameFromUrl(url),
         tag: String = "",
         metaData: String = "",
-        headers: HashMap<String, String> = hashMapOf()
+        headers: HashMap<String, String> = hashMapOf(),
+        supportPauseResume: Boolean = true,
     ): Int {
-
-        require(url.isNotEmpty() && path.isNotEmpty() && fileName.isNotEmpty()) {
-            "Missing ${if (url.isEmpty()) "url" else if (path.isEmpty()) "path" else "fileName"}"
-        }
-
-        // This will create a temp file which will be renamed after successful download.
-        // This will also make sure each file name is unique.
-        val newFileName = FileUtil.resolveNamingConflicts(fileName, path)
-        FileUtil.createTempFileIfNotExists(path, newFileName)
-
-        val downloadRequest = DownloadRequest(
+        val downloadRequest = prepareDownloadRequest(
             url = url,
             path = path,
-            fileName = newFileName,
+            fileName = fileName,
             tag = tag,
             headers = headers,
-            metaData = metaData
+            metaData = metaData,
+            supportPauseResume = supportPauseResume,
         )
         downloadManager.downloadAsync(downloadRequest)
+        return downloadRequest.id
+    }
+
+    /**
+     * Download the content synchronously, it will return the download id once download is entered in the queue
+     *
+     * @param url Download url of the content
+     * @param path Download path to store the downloaded file
+     * @param fileName Name of the file to be downloaded
+     * @param tag Optional tag for each download to group the download into category
+     * @param metaData Optional metaData set for adding any extra download info
+     * @param headers Optional headers sent when making api call for file download
+     * @return Unique Download ID associated with current download
+     */
+    suspend fun downloadSync(
+        url: String,
+        path: String,
+        fileName: String = FileUtil.getFileNameFromUrl(url),
+        tag: String = "",
+        metaData: String = "",
+        headers: HashMap<String, String> = hashMapOf(),
+        supportPauseResume: Boolean = true,
+    ): Int {
+        val downloadRequest = mutex.withLock {
+            prepareDownloadRequest(
+                url = url,
+                path = path,
+                fileName = fileName,
+                tag = tag,
+                headers = headers,
+                metaData = metaData,
+                supportPauseResume = supportPauseResume,
+            )
+        }
+        downloadManager.download(downloadRequest)
         return downloadRequest.id
     }
 
@@ -235,35 +266,6 @@ class Ketch private constructor(
      */
     fun cancelAll() {
         downloadManager.cancelAllAsync()
-    }
-
-    /**
-     * Observe all downloads
-     *
-     * @return [Flow] of List of [DownloadModel]
-     */
-    fun observeDownloads(): Flow<List<DownloadModel>> {
-        return downloadManager.observeAllDownloads()
-    }
-
-    /**
-     * Observe download with given [id]
-     *
-     * @param id Unique Download ID of the download
-     * @return [Flow] of List of [DownloadModel]
-     */
-    fun observeDownloadById(id: Int): Flow<DownloadModel> {
-        return downloadManager.observeDownloadById(id)
-    }
-
-    /**
-     * Observe downloads with given [tag]
-     *
-     * @param tag Tag associated with the download
-     * @return [Flow] of List of [DownloadModel]
-     */
-    fun observeDownloadByTag(tag: String): Flow<List<DownloadModel>> {
-        return downloadManager.observeDownloadsByTag(tag)
     }
 
     /**
@@ -418,6 +420,75 @@ class Ketch private constructor(
         }
 
     /**
+     * Observe all downloads
+     *
+     * @return [Flow] of List of [DownloadModel]
+     */
+    fun observeDownloads(): Flow<List<DownloadModel>> {
+        return downloadManager.observeAllDownloads()
+    }
+
+    /**
+     * Observe download with given [id]
+     *
+     * @param id Unique Download ID of the download
+     * @return [Flow] of List of [DownloadModel]
+     */
+    fun observeDownloadById(id: Int): Flow<DownloadModel?> {
+        return downloadManager.observeDownloadById(id)
+    }
+
+    /**
+     * Observe downloads with given [tag]
+     *
+     * @param tag Tag associated with the download
+     * @return [Flow] of List of [DownloadModel]
+     */
+    fun observeDownloadByTag(tag: String): Flow<List<DownloadModel>> {
+        return downloadManager.observeDownloadsByTag(tag)
+    }
+
+    /**
+     * Observe downloads with given [status]
+     *
+     * @param status Status associated with the download
+     * @return [Flow] of List of [DownloadModel]
+     */
+    fun observeDownloadsByStatus(status: Status): Flow<List<DownloadModel>> {
+        return downloadManager.observeDownloadsByStatus(status)
+    }
+
+    /**
+     * Observe downloads with given [ids]
+     *
+     * @param ids List of ids associated with the download
+     * @return [Flow] of List of [DownloadModel]
+     */
+    fun observeDownloadsByIds(ids: List<Int>): Flow<List<DownloadModel?>> {
+        return downloadManager.observeDownloadsByIds(ids)
+    }
+
+    /**
+     * Observe downloads with given [tags]
+     *
+     * @param tags List of tags associated with the download
+     * @return [Flow] of List of [DownloadModel]
+     */
+    fun observeDownloadsByTags(tags: List<String>): Flow<List<DownloadModel>> {
+        return downloadManager.observeDownloadsByTags(tags)
+    }
+
+    /**
+     * Observe downloads with given [statuses]
+     *
+     * @param statuses List of statuses associated with the download
+     * @return [Flow] of List of [DownloadModel]
+     */
+    fun observeDownloadsByStatuses(statuses: List<Status>): Flow<List<DownloadModel>> {
+        return downloadManager.observeDownloadsByStatuses(statuses)
+    }
+
+    /**
      * Suspend function to get list of all Downloads
      *
      * @return List of [DownloadModel]
@@ -431,5 +502,76 @@ class Ketch private constructor(
      * @return [DownloadModel] if present else null
      */
     suspend fun getDownloadModelById(id: Int) = downloadManager.getDownloadModelById(id)
+
+    /**
+     * Suspend function to get download model by tag
+     *
+     * @param tag
+     * @return [DownloadModel] if present else null
+     */
+    suspend fun getDownloadModelByTag(tag: String) = downloadManager.getDownloadModelByTag(tag)
+
+    /**
+     * Suspend function to get download model by status
+     *
+     * @param status
+     * @return [DownloadModel] if present else null
+     */
+    suspend fun getDownloadModelByStatus(status: Status) = downloadManager.getDownloadModelByStatus(status)
+
+    /**
+     * Suspend function to get download model by list of tags
+     *
+     * @param tags
+     * @return List of [DownloadModel]
+     */
+    suspend fun getDownloadModelByTags(tags: List<String>) = downloadManager.getDownloadModelByTags(tags)
+
+    /**
+     * Suspend function to get download model by list of ids
+     *
+     * @param ids
+     * @return List of [DownloadModel]
+     */
+    suspend fun getDownloadModelByIds(ids: List<Int>) = downloadManager.getDownloadModelByIds(ids)
+
+    /**
+     * Suspend function to get download model by list of statuses
+     *
+     * @param statuses
+     * @return List of [DownloadModel]
+     */
+    suspend fun getDownloadModelByStatuses(statuses: List<Status>) = downloadManager.getDownloadModelByStatuses(statuses)
+
+    private fun prepareDownloadRequest(
+        url: String,
+        path: String,
+        fileName: String,
+        tag: String,
+        headers: HashMap<String, String>,
+        metaData: String,
+        supportPauseResume: Boolean,
+    ): DownloadRequest {
+        require(url.isNotEmpty() && path.isNotEmpty() && fileName.isNotEmpty()) {
+            "Missing ${if (url.isEmpty()) "url" else if (path.isEmpty()) "path" else "fileName"}"
+        }
+
+        // This will create a temp file which will be renamed after successful download.
+        // This will also make sure each file name is unique.
+        val newFileName = FileUtil.resolveNamingConflicts(fileName, path)
+        FileUtil.createTempFileIfNotExists(path, newFileName)
+
+        val downloadRequest = DownloadRequest(
+            url = url,
+            path = path,
+            fileName = newFileName,
+            tag = tag,
+            headers = headers,
+            metaData = metaData,
+            supportPauseResume = supportPauseResume,
+        )
+
+        return downloadRequest
+    }
 
 }

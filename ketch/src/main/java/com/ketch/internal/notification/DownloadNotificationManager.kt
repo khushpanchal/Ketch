@@ -64,15 +64,19 @@ internal class DownloadNotificationManager(
         update: Boolean = false
     ): ForegroundInfo? {
         if (update) {
+
+            var nb = notificationBuilder
+                .setProgress(DownloadConst.MAX_VALUE_PROGRESS, progress, if (length == 0L) true else false)
+
+            if (length != 0L) {
+                nb = nb.setContentText(
+                    setContentTextNotification(speedInBPerMs, progress, length)
+                ).setSubText("$progress%")
+            }
+
             foregroundInfo = ForegroundInfo(
                 notificationId,
-                notificationBuilder
-                    .setProgress(DownloadConst.MAX_VALUE_PROGRESS, progress, false)
-                    .setContentText(
-                        setContentTextNotification(speedInBPerMs, progress, length)
-                    )
-                    .setSubText("$progress%")
-                    .build(),
+                nb.build(),
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     FOREGROUND_SERVICE_TYPE_DATA_SYNC
                 } else {
@@ -134,17 +138,21 @@ internal class DownloadNotificationManager(
                 PendingIntent.FLAG_IMMUTABLE
             )
 
+            var nb = notificationBuilder
+                .setSmallIcon(notificationConfig.smallIcon)
+                .setContentTitle("Downloading $fileName")
+                .setContentIntent(pendingIntentOpen)
+                .setProgress(DownloadConst.MAX_VALUE_PROGRESS, progress, if (length == 0L) true else false)
+                .setOnlyAlertOnce(true)
+                .setOngoing(true)
+
+            if (length != 0L) {
+                nb = nb.addAction(-1, NotificationConst.PAUSE_BUTTON_TEXT, pendingIntentPause)
+            }
+
             foregroundInfo = ForegroundInfo(
                 notificationId,
-                notificationBuilder
-                    .setSmallIcon(notificationConfig.smallIcon)
-                    .setContentTitle("Downloading $fileName")
-                    .setContentIntent(pendingIntentOpen)
-                    .setProgress(DownloadConst.MAX_VALUE_PROGRESS, progress, false)
-                    .setOnlyAlertOnce(true)
-                    .setOngoing(true)
-                    .addAction(-1, NotificationConst.PAUSE_BUTTON_TEXT, pendingIntentPause)
-                    .addAction(-1, NotificationConst.CANCEL_BUTTON_TEXT, pendingIntentCancel)
+                nb.addAction(-1, NotificationConst.CANCEL_BUTTON_TEXT, pendingIntentCancel)
                     .setDeleteIntent(pendingIntentDismiss)
                     .build(),
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -305,8 +313,8 @@ internal class DownloadNotificationManager(
                     notificationConfig.importance
                 )
                 putExtra(
-                    NotificationConst.KEY_NOTIFICATION_CHANNEL_DESCRIPTION,
-                    notificationConfig.channelDescription
+                    notificationConfig.channelDescription,
+                    NotificationConst.KEY_NOTIFICATION_CHANNEL_DESCRIPTION
                 )
                 putExtra(
                     NotificationConst.KEY_NOTIFICATION_SMALL_ICON,

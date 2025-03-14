@@ -18,6 +18,7 @@ import com.ketch.internal.utils.WorkUtil
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import java.io.File
 
 internal class DownloadWorker(
     private val context: Context,
@@ -52,6 +53,7 @@ internal class DownloadWorker(
         val dirPath = downloadRequest.path
         val fileName = downloadRequest.fileName
         val headers = downloadRequest.headers
+        val supportPauseResume = downloadRequest.supportPauseResume // in case of false, we will not store total length info in DB
 
         if (notificationConfig.enabled) {
             downloadNotificationManager = DownloadNotificationManager(
@@ -79,18 +81,20 @@ internal class DownloadWorker(
 
             if (latestETag != existingETag) {
                 FileUtil.deleteFileIfExists(path = dirPath, name = fileName)
+                FileUtil.createTempFileIfNotExists(path = dirPath, fileName = fileName)
                 downloadDao.find(id)?.copy(
                     eTag = latestETag,
                     lastModified = System.currentTimeMillis()
                 )?.let { downloadDao.update(it) }
             }
 
-            var progressPercentage = 0
+            var progressPercentage = -1
 
             val totalLength = DownloadTask(
                 url = url,
                 path = dirPath,
                 fileName = fileName,
+                supportPauseResume = supportPauseResume,
                 downloadService = downloadService
             ).download(
                 headers = headers,
@@ -154,7 +158,9 @@ internal class DownloadWorker(
                 lastModified = System.currentTimeMillis()
             )?.let { downloadDao.update(it) }
 
-            downloadNotificationManager?.sendDownloadSuccessNotification(totalLength)
+            downloadNotificationManager?.sendDownloadSuccessNotification(
+                totalLength = if (totalLength > 0) totalLength else File(dirPath, fileName).length()
+            )
             Result.success()
         } catch (e: Exception) {
             GlobalScope.launch {

@@ -134,7 +134,7 @@ internal class DownloadManager(
         }
     }
 
-    private suspend fun download(downloadRequest: DownloadRequest) {
+    suspend fun download(downloadRequest: DownloadRequest) {
 
         val inputDataBuilder = Data.Builder()
             .putString(DownloadConst.KEY_DOWNLOAD_REQUEST, downloadRequest.toJson())
@@ -194,7 +194,6 @@ internal class DownloadManager(
                     metaData = downloadRequest.metaData
                 )
             )
-            deleteFileIfExists(downloadRequest.path, downloadRequest.fileName)
         }
 
         workManager.enqueueUniqueWork(
@@ -464,22 +463,58 @@ internal class DownloadManager(
         }
     }
 
-    fun observeDownloadById(id: Int): Flow<DownloadModel> {
-        return downloadDao.getEntityByIdFlow(id).filterNotNull().distinctUntilChanged().map { entity ->
-            entity.toDownloadModel()
-        }
-    }
-
-    fun observeDownloadsByTag(tag: String): Flow<List<DownloadModel>> {
-        return downloadDao.getAllEntityByTagFlow(tag).map { entityList ->
+    fun observeAllDownloads(): Flow<List<DownloadModel>> {
+        return downloadDao.getAllEntityFlow().distinctUntilChanged().map { entityList ->
             entityList.map { entity ->
                 entity.toDownloadModel()
             }
         }
     }
 
-    fun observeAllDownloads(): Flow<List<DownloadModel>> {
-        return downloadDao.getAllEntityFlow().map { entityList ->
+    fun observeDownloadById(id: Int): Flow<DownloadModel?> {
+        return downloadDao.getEntityByIdFlow(id).distinctUntilChanged().map { entity ->
+            entity?.toDownloadModel()
+        }
+    }
+
+    fun observeDownloadsByTag(tag: String): Flow<List<DownloadModel>> {
+        return downloadDao.getAllEntityByTagFlow(tag).distinctUntilChanged().map { entityList ->
+            entityList.map { entity ->
+                entity.toDownloadModel()
+            }
+        }
+    }
+
+    fun observeDownloadsByStatus(status: Status): Flow<List<DownloadModel>> {
+        return downloadDao.getAllEntityByStatusFlow(status.name).distinctUntilChanged().map { entityList ->
+            entityList.map { entity ->
+                entity.toDownloadModel()
+            }
+        }
+    }
+
+    fun observeDownloadsByIds(ids: List<Int>): Flow<List<DownloadModel?>> {
+        return downloadDao.getAllEntityByIdsFlow(ids).distinctUntilChanged().map { entityList ->
+            ids.map { id ->
+                entityList.find { it?.id == id }?.toDownloadModel()
+            }
+        }
+    }
+
+    fun observeDownloadsByTags(tags: List<String>): Flow<List<DownloadModel>> {
+        return downloadDao.getAllEntityByTagsFlow(tags).distinctUntilChanged().map { entityList ->
+            entityList.map { entity ->
+                entity.toDownloadModel()
+            }
+        }
+    }
+
+    fun observeDownloadsByStatuses(statuses: List<Status>): Flow<List<DownloadModel>> {
+        return downloadDao.getAllEntityByStatusesFlow(
+            statuses.map {
+                it.name
+            }
+        ).distinctUntilChanged().map { entityList ->
             entityList.map { entity ->
                 entity.toDownloadModel()
             }
@@ -494,6 +529,41 @@ internal class DownloadManager(
 
     suspend fun getDownloadModelById(id: Int): DownloadModel? {
         return downloadDao.find(id)?.toDownloadModel()
+    }
+
+    suspend fun getDownloadModelByTag(tag: String): List<DownloadModel> {
+        return downloadDao.getAllEntityByTag(tag).map { entity ->
+            entity.toDownloadModel()
+        }
+    }
+
+    suspend fun getDownloadModelByStatus(status: Status): List<DownloadModel> {
+        return downloadDao.getAllEntityByStatus(status.name).map { entity ->
+            entity.toDownloadModel()
+        }
+    }
+
+    suspend fun getDownloadModelByIds(ids: List<Int>): List<DownloadModel?> {
+        val entityList = downloadDao.getAllEntityByIds(ids)
+        return ids.map { id ->
+            entityList.find { it?.id == id }?.toDownloadModel()
+        }
+    }
+
+    suspend fun getDownloadModelByTags(tags: List<String>): List<DownloadModel> {
+        return downloadDao.getAllEntityByTags(tags).map { entity ->
+            entity.toDownloadModel()
+        }
+    }
+
+    suspend fun getDownloadModelByStatuses(statuses: List<Status>): List<DownloadModel> {
+        return downloadDao.getAllEntityByStatuses(
+            statuses.map {
+                it.name
+            }
+        ).map { entity ->
+            entity.toDownloadModel()
+        }
     }
 
 }

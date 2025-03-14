@@ -8,9 +8,10 @@ import java.io.FileOutputStream
 import java.io.IOException
 
 internal class DownloadTask(
-    private var url: String,
-    private var path: String,
-    private var fileName: String,
+    private val url: String,
+    private val path: String,
+    private val fileName: String,
+    private val supportPauseResume: Boolean = true,
     private val downloadService: DownloadService,
 ) {
 
@@ -22,8 +23,8 @@ internal class DownloadTask(
 
     suspend fun download(
         headers: MutableMap<String, String> = mutableMapOf(),
-        onStart: suspend (Long) -> Unit,
-        onProgress: suspend (Long, Long, Float) -> Unit
+        onStart: suspend (totalBytes: Long) -> Unit,
+        onProgress: suspend (progressBytes: Long, totalBytes: Long, speed: Float) -> Unit
     ): Long {
 
         var rangeStart = 0L
@@ -61,11 +62,14 @@ internal class DownloadTask(
 
         var totalBytes = responseBody.contentLength()
 
-        if (totalBytes < 0) throw IOException("Content Length is wrong: $totalBytes")
+        // pause resume not supported if we can not get content length or not supported by user
+        if (totalBytes < 0 || supportPauseResume.not()) {
+            totalBytes = 0
+        } else {
+            totalBytes += rangeStart
+        }
 
         var progressBytes = 0L
-
-        totalBytes += rangeStart
 
         responseBody.byteStream().use { inputStream ->
             FileOutputStream(tempFile,true).use { outputStream ->
@@ -82,6 +86,8 @@ internal class DownloadTask(
                 var progressInvokeTime = System.currentTimeMillis()
                 var speed: Float
 
+                onProgress.invoke(0L, 0L, 0F)
+
                 while (bytes >= 0) {
 
                     outputStream.write(buffer, 0, bytes)
@@ -95,11 +101,13 @@ internal class DownloadTask(
                         tempBytes = 0L
                         progressInvokeTime = System.currentTimeMillis()
                         if (progressBytes > totalBytes) progressBytes = totalBytes
-                        onProgress.invoke(
-                            progressBytes,
-                            totalBytes,
-                            speed
-                        )
+                        if(totalBytes > 0) {
+                            onProgress.invoke(
+                                progressBytes,
+                                totalBytes,
+                                speed
+                            )
+                        }
                     }
                 }
                 onProgress.invoke(totalBytes, totalBytes, 0F)
