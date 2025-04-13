@@ -113,12 +113,12 @@ internal class DownloadManager(
 
                             WorkInfo.State.CANCELLED -> {
                                 val downloadEntity = findDownloadEntityFromUUID(workInfo.id)
-                                if (downloadEntity?.userAction == UserAction.PAUSE.toString()) {
+                                if (downloadEntity?.userAction == UserAction.PAUSE) {
                                     logger.log(
                                         msg = "Download Paused. FileName: ${downloadEntity.fileName}, " +
                                                 "ID: ${downloadEntity.id}"
                                     )
-                                } else if (downloadEntity?.userAction == UserAction.CANCEL.toString()) {
+                                } else if (downloadEntity?.userAction == UserAction.CANCEL) {
                                     logger.log(
                                         msg = "Download Cancelled. FileName: ${downloadEntity.fileName}, " +
                                                 "ID: ${downloadEntity.id}"
@@ -155,7 +155,7 @@ internal class DownloadManager(
         if (downloadDao.find(downloadRequest.id) != null) {
 
             downloadDao.find(downloadRequest.id)?.copy(
-                userAction = UserAction.START.toString(),
+                userAction = UserAction.START,
                 lastModified = System.currentTimeMillis()
             )?.let { downloadDao.update(it) }
 
@@ -166,13 +166,13 @@ internal class DownloadManager(
 
             if (downloadEntity != null &&
                 downloadEntity.uuid != downloadWorkRequest.id.toString() &&
-                downloadEntity.status != Status.QUEUED.toString() &&
-                downloadEntity.status != Status.PROGRESS.toString() &&
-                downloadEntity.status != Status.STARTED.toString()
+                downloadEntity.status != Status.QUEUED &&
+                downloadEntity.status != Status.PROGRESS &&
+                downloadEntity.status != Status.STARTED
             ) {
                 downloadDao.find(downloadRequest.id)?.copy(
                     uuid = downloadWorkRequest.id.toString(),
-                    status = Status.QUEUED.toString(),
+                    status = Status.QUEUED,
                     lastModified = System.currentTimeMillis()
                 )?.let { downloadDao.update(it) }
             }
@@ -186,10 +186,10 @@ internal class DownloadManager(
                     id = downloadRequest.id,
                     headersJson = WorkUtil.hashMapToJson(downloadRequest.headers),
                     timeQueued = System.currentTimeMillis(),
-                    status = Status.QUEUED.toString(),
+                    status = Status.QUEUED,
                     uuid = downloadWorkRequest.id.toString(),
                     lastModified = System.currentTimeMillis(),
-                    userAction = UserAction.START.toString(),
+                    userAction = UserAction.START,
                     metaData = downloadRequest.metaData
                 )
             )
@@ -204,10 +204,11 @@ internal class DownloadManager(
 
     private suspend fun resume(id: Int) {
         val downloadEntity = downloadDao.find(id)
-        if (downloadEntity != null) {
+        if (downloadEntity != null && (downloadEntity.status!= Status.PROGRESS &&
+                downloadEntity.status!= Status.SUCCESS)) {
             downloadDao.update(
                 downloadEntity.copy(
-                    userAction = UserAction.RESUME.toString(),
+                    userAction = UserAction.RESUME,
                     lastModified = System.currentTimeMillis()
                 )
             )
@@ -230,16 +231,16 @@ internal class DownloadManager(
         if (downloadEntity != null) {
             downloadDao.update(
                 downloadEntity.copy(
-                    userAction = UserAction.CANCEL.toString(),
+                    userAction = UserAction.CANCEL,
                     lastModified = System.currentTimeMillis()
                 )
             )
-            if (downloadEntity.status == Status.PAUSED.toString() ||
-                downloadEntity.status == Status.FAILED.toString()
+            if (downloadEntity.status == Status.PAUSED ||
+                downloadEntity.status == Status.FAILED
             ) { // Edge Case: When user cancel the download in pause or fail (terminating) state as work is already cancelled.
 
                 downloadDao.find(downloadEntity.id)?.copy(
-                    status = Status.CANCELLED.toString(),
+                    status = Status.CANCELLED,
                     lastModified = System.currentTimeMillis()
                 )?.let { downloadDao.update(it) }
                 deleteFileIfExists(downloadEntity.path, downloadEntity.fileName)
@@ -259,7 +260,7 @@ internal class DownloadManager(
         if (downloadEntity != null) {
             downloadDao.update(
                 downloadEntity.copy(
-                    userAction = UserAction.PAUSE.toString(),
+                    userAction = UserAction.PAUSE,
                     lastModified = System.currentTimeMillis()
                 )
             )
@@ -272,7 +273,7 @@ internal class DownloadManager(
         if (downloadEntity != null) {
             downloadDao.update(
                 downloadEntity.copy(
-                    userAction = UserAction.RETRY.toString(),
+                    userAction = UserAction.RETRY,
                     lastModified = System.currentTimeMillis()
                 )
             )
@@ -485,7 +486,7 @@ internal class DownloadManager(
     }
 
     fun observeDownloadsByStatus(status: Status): Flow<List<DownloadModel>> {
-        return downloadDao.getAllEntityByStatusFlow(status.name).distinctUntilChanged().map { entityList ->
+        return downloadDao.getAllEntityByStatusFlow(status).distinctUntilChanged().map { entityList ->
             entityList.map { entity ->
                 entity.toDownloadModel()
             }
@@ -509,11 +510,7 @@ internal class DownloadManager(
     }
 
     fun observeDownloadsByStatuses(statuses: List<Status>): Flow<List<DownloadModel>> {
-        return downloadDao.getAllEntityByStatusesFlow(
-            statuses.map {
-                it.name
-            }
-        ).distinctUntilChanged().map { entityList ->
+        return downloadDao.getAllEntityByStatusesFlow(statuses).distinctUntilChanged().map { entityList ->
             entityList.map { entity ->
                 entity.toDownloadModel()
             }
@@ -537,7 +534,7 @@ internal class DownloadManager(
     }
 
     suspend fun getDownloadModelByStatus(status: Status): List<DownloadModel> {
-        return downloadDao.getAllEntityByStatus(status.name).map { entity ->
+        return downloadDao.getAllEntityByStatus(status).map { entity ->
             entity.toDownloadModel()
         }
     }
@@ -557,9 +554,7 @@ internal class DownloadManager(
 
     suspend fun getDownloadModelByStatuses(statuses: List<Status>): List<DownloadModel> {
         return downloadDao.getAllEntityByStatuses(
-            statuses.map {
-                it.name
-            }
+            statuses
         ).map { entity ->
             entity.toDownloadModel()
         }

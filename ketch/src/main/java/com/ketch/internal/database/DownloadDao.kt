@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import com.ketch.Status
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -43,10 +44,10 @@ internal interface DownloadDao {
     fun getAllEntityByTagsFlow(tags: List<String>): Flow<List<DownloadEntity>>
 
     @Query("SELECT * FROM downloads WHERE status = :status ORDER BY timeQueued ASC")
-    fun getAllEntityByStatusFlow(status: String): Flow<List<DownloadEntity>>
+    fun getAllEntityByStatusFlow(status: Status): Flow<List<DownloadEntity>>
 
     @Query("SELECT * FROM downloads WHERE status IN (:statuses) ORDER BY timeQueued ASC")
-    fun getAllEntityByStatusesFlow(statuses: List<String>): Flow<List<DownloadEntity>>
+    fun getAllEntityByStatusesFlow(statuses: List<Status>): Flow<List<DownloadEntity>>
 
     @Query("SELECT * FROM downloads ORDER BY timeQueued ASC")
     suspend fun getAllEntity(): List<DownloadEntity>
@@ -64,8 +65,8 @@ internal interface DownloadDao {
     suspend fun getAllEntityByIds(ids: List<Int>): List<DownloadEntity?>
 
     @Query("SELECT * FROM downloads WHERE status = :status ORDER BY timeQueued ASC")
-    suspend fun getAllEntityByStatus(status: String): List<DownloadEntity>
+    suspend fun getAllEntityByStatus(status: Status): List<DownloadEntity>
 
     @Query("SELECT * FROM downloads WHERE status IN (:statuses) ORDER BY timeQueued ASC")
-    suspend fun getAllEntityByStatuses(statuses: List<String>): List<DownloadEntity>
+    suspend fun getAllEntityByStatuses(statuses: List<Status>): List<DownloadEntity>
 }

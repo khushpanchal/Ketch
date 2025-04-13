@@ -6,8 +6,8 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.ketch.Status
 import com.ketch.internal.database.DatabaseInstance
-import com.ketch.internal.download.DownloadTask
 import com.ketch.internal.download.ApiResponseHeaderChecker
+import com.ketch.internal.download.DownloadTask
 import com.ketch.internal.network.RetrofitInstance
 import com.ketch.internal.notification.DownloadNotificationManager
 import com.ketch.internal.utils.DownloadConst
@@ -102,7 +102,7 @@ internal class DownloadWorker(
 
                     downloadDao.find(id)?.copy(
                         totalBytes = length,
-                        status = Status.STARTED.toString(),
+                        status = Status.STARTED,
                         lastModified = System.currentTimeMillis()
                     )?.let { downloadDao.update(it) }
 
@@ -127,7 +127,7 @@ internal class DownloadWorker(
                         downloadDao.find(id)?.copy(
                             downloadedBytes = downloadedBytes,
                             speedInBytePerMs = speed,
-                            status = Status.PROGRESS.toString(),
+                            status = Status.PROGRESS,
                             lastModified = System.currentTimeMillis()
                         )?.let { downloadDao.update(it) }
 
@@ -154,7 +154,7 @@ internal class DownloadWorker(
 
             downloadDao.find(id)?.copy(
                 totalBytes = totalLength,
-                status = Status.SUCCESS.toString(),
+                status = Status.SUCCESS,
                 lastModified = System.currentTimeMillis()
             )?.let { downloadDao.update(it) }
 
@@ -165,10 +165,10 @@ internal class DownloadWorker(
         } catch (e: Exception) {
             GlobalScope.launch {
                 if (e is CancellationException) {
-                    if (downloadDao.find(id)?.userAction == UserAction.PAUSE.toString()) {
+                    if (downloadDao.find(id)?.userAction == UserAction.PAUSE) {
 
                         downloadDao.find(id)?.copy(
-                            status = Status.PAUSED.toString(),
+                            status = Status.PAUSED,
                             lastModified = System.currentTimeMillis()
                         )?.let { downloadDao.update(it) }
                         val downloadEntity = downloadDao.find(id)
@@ -186,7 +186,7 @@ internal class DownloadWorker(
                     } else {
 
                         downloadDao.find(id)?.copy(
-                            status = Status.CANCELLED.toString(),
+                            status = Status.CANCELLED,
                             lastModified = System.currentTimeMillis()
                         )?.let { downloadDao.update(it) }
                         FileUtil.deleteFileIfExists(dirPath, fileName)
@@ -196,7 +196,7 @@ internal class DownloadWorker(
                 } else {
 
                     downloadDao.find(id)?.copy(
-                        status = Status.FAILED.toString(),
+                        status = Status.FAILED,
                         failureReason = e.message ?: "",
                         lastModified = System.currentTimeMillis()
                     )?.let { downloadDao.update(it) }
