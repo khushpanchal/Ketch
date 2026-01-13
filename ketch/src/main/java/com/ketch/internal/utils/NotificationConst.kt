@@ -10,7 +10,7 @@ internal object NotificationConst {
     const val KEY_NOTIFICATION_CHANNEL_IMPORTANCE = "key_notification_channel_importance"
     const val DEFAULT_VALUE_NOTIFICATION_CHANNEL_IMPORTANCE = 2 // LOW
     const val KEY_NOTIFICATION_SMALL_ICON = "key_small_notification_icon"
-    const val DEFAULT_VALUE_NOTIFICATION_SMALL_ICON = -1
+    const val DEFAULT_VALUE_NOTIFICATION_SMALL_ICON = 0
     const val KEY_NOTIFICATION_ID = "key_notification_id"
 
     // Actions

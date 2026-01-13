@@ -12,6 +12,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.ketch.Ketch
+import com.ketch.R
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.NotificationConst
 import com.ketch.internal.utils.TextUtil
@@ -93,13 +94,19 @@ internal class NotificationReceiver : BroadcastReceiver() {
                 intent.extras?.getString(NotificationConst.KEY_NOTIFICATION_CHANNEL_NAME)
                     ?: NotificationConst.DEFAULT_VALUE_NOTIFICATION_CHANNEL_NAME
             val notificationImportance =
-                intent.extras?.getInt(NotificationConst.KEY_NOTIFICATION_CHANNEL_IMPORTANCE)
+                intent.extras?.getInt(
+                    NotificationConst.KEY_NOTIFICATION_CHANNEL_IMPORTANCE,
+                    NotificationConst.DEFAULT_VALUE_NOTIFICATION_CHANNEL_IMPORTANCE
+                )
                     ?: NotificationConst.DEFAULT_VALUE_NOTIFICATION_CHANNEL_IMPORTANCE
             val notificationChannelDescription =
                 intent.extras?.getString(NotificationConst.KEY_NOTIFICATION_CHANNEL_DESCRIPTION)
                     ?: NotificationConst.DEFAULT_VALUE_NOTIFICATION_CHANNEL_DESCRIPTION
             val notificationSmallIcon =
-                intent.extras?.getInt(NotificationConst.KEY_NOTIFICATION_SMALL_ICON)
+                intent.extras?.getInt(
+                    NotificationConst.KEY_NOTIFICATION_SMALL_ICON,
+                    NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON
+                )
                     ?: NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON
             val fileName = intent.extras?.getString(DownloadConst.KEY_FILE_NAME) ?: ""
             val currentProgress = intent.extras?.getInt(DownloadConst.KEY_PROGRESS) ?: 0
@@ -171,7 +178,7 @@ internal class NotificationReceiver : BroadcastReceiver() {
                 PendingIntent.FLAG_IMMUTABLE
             )
 
-            var notificationBuilder =
+            val notificationBuilder =
                 NotificationCompat.Builder(context, NotificationConst.NOTIFICATION_CHANNEL_ID)
                     .setSmallIcon(notificationSmallIcon)
                     .setContentText(
@@ -196,24 +203,34 @@ internal class NotificationReceiver : BroadcastReceiver() {
 
             // add retry and cancel button for failed download
             if (intent.action == NotificationConst.ACTION_DOWNLOAD_FAILED) {
-                notificationBuilder = notificationBuilder.addAction(
-                    -1,
-                    NotificationConst.RETRY_BUTTON_TEXT,
-                    pendingIntentRetry
-                )
+                notificationBuilder
+                    .addAction(
+                        R.drawable.ketch_ic_notif_retry,
+                        NotificationConst.RETRY_BUTTON_TEXT,
+                        pendingIntentRetry
+                    )
                     .setProgress(DownloadConst.MAX_VALUE_PROGRESS, currentProgress, false)
-                    .addAction(-1, NotificationConst.CANCEL_BUTTON_TEXT, pendingIntentCancel)
+                    .addAction(
+                        R.drawable.ketch_ic_notif_cancel,
+                        NotificationConst.CANCEL_BUTTON_TEXT,
+                        pendingIntentCancel
+                    )
                     .setSubText("$currentProgress%")
             }
             // add resume and cancel button for paused download
             if (intent.action == NotificationConst.ACTION_DOWNLOAD_PAUSED) {
-                notificationBuilder = notificationBuilder.addAction(
-                    -1,
-                    NotificationConst.RESUME_BUTTON_TEXT,
-                    pendingIntentResume
-                )
+                notificationBuilder
+                    .addAction(
+                        R.drawable.ketch_ic_notif_resume,
+                        NotificationConst.RESUME_BUTTON_TEXT,
+                        pendingIntentResume
+                    )
                     .setProgress(DownloadConst.MAX_VALUE_PROGRESS, currentProgress, false)
-                    .addAction(-1, NotificationConst.CANCEL_BUTTON_TEXT, pendingIntentCancel)
+                    .addAction(
+                        R.drawable.ketch_ic_notif_cancel,
+                        NotificationConst.CANCEL_BUTTON_TEXT,
+                        pendingIntentCancel
+                    )
                     .setSubText("$currentProgress%")
             }
 

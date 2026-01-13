@@ -16,7 +16,7 @@ class MainApplication : Application() {
             .setNotificationConfig(
                 NotificationConfig(
                     true,
-                    smallIcon = R.drawable.ic_launcher_foreground
+                    smallIcon = R.drawable.ic_notif_android
                 )
             )
             .enableLogs(true)

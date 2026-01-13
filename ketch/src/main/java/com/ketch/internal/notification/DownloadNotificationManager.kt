@@ -12,6 +12,7 @@ import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.work.ForegroundInfo
 import com.ketch.NotificationConfig
+import com.ketch.R
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.NotificationConst
 import com.ketch.internal.utils.TextUtil
@@ -138,7 +139,7 @@ internal class DownloadNotificationManager(
                 PendingIntent.FLAG_IMMUTABLE
             )
 
-            var nb = notificationBuilder
+            val nb = notificationBuilder
                 .setSmallIcon(notificationConfig.smallIcon)
                 .setContentTitle("Downloading $fileName")
                 .setContentIntent(pendingIntentOpen)
@@ -147,12 +148,22 @@ internal class DownloadNotificationManager(
                 .setOngoing(true)
 
             if (length != 0L) {
-                nb = nb.addAction(-1, NotificationConst.PAUSE_BUTTON_TEXT, pendingIntentPause)
+                nb
+                    .addAction(
+                        R.drawable.ketch_ic_notif_pause,
+                        NotificationConst.PAUSE_BUTTON_TEXT,
+                        pendingIntentPause
+                    )
             }
 
             foregroundInfo = ForegroundInfo(
                 notificationId,
-                nb.addAction(-1, NotificationConst.CANCEL_BUTTON_TEXT, pendingIntentCancel)
+                nb
+                    .addAction(
+                        R.drawable.ketch_ic_notif_cancel,
+                        NotificationConst.CANCEL_BUTTON_TEXT,
+                        pendingIntentCancel
+                    )
                     .setDeleteIntent(pendingIntentDismiss)
                     .build(),
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
