@@ -22,11 +22,11 @@ internal class DownloadTask(
     }
 
     suspend fun download(
-        headers: MutableMap<String, String> = mutableMapOf(),
+        headers: Map<String, String> = emptyMap(),
         onStart: suspend (totalBytes: Long) -> Unit,
         onProgress: suspend (progressBytes: Long, totalBytes: Long, speed: Float) -> Unit
     ): Long {
-
+        val headers = HashMap(headers)
         var rangeStart = 0L
         val file = File(path, fileName)
         val tempFile = FileUtil.getTempFileForFile(file)

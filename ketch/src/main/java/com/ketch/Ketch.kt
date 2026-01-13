@@ -191,7 +191,7 @@ class Ketch private constructor(
         fileName: String = FileUtil.getFileNameFromUrl(url),
         tag: String = "",
         metaData: String = "",
-        headers: HashMap<String, String> = hashMapOf(),
+        headers: Map<String, String> = emptyMap(),
         supportPauseResume: Boolean = true,
     ): Int {
         val downloadRequest = prepareDownloadRequest(
@@ -224,7 +224,7 @@ class Ketch private constructor(
         fileName: String = FileUtil.getFileNameFromUrl(url),
         tag: String = "",
         metaData: String = "",
-        headers: HashMap<String, String> = hashMapOf(),
+        headers: Map<String, String> = emptyMap(),
         supportPauseResume: Boolean = true,
     ): Int {
         val downloadRequest = mutex.withLock {
@@ -395,7 +395,7 @@ class Ketch private constructor(
      */
     suspend fun isContentValid(
         url: String,
-        headers: HashMap<String, String> = hashMapOf(),
+        headers: Map<String, String> = emptyMap(),
         eTag: String
     ): Boolean =
         withContext(Dispatchers.IO) {
@@ -412,7 +412,7 @@ class Ketch private constructor(
      */
     suspend fun getContentLength(
         url: String,
-        headers: HashMap<String, String> = hashMapOf()
+        headers: Map<String, String> = emptyMap(),
     ): Long =
         withContext(Dispatchers.IO) {
             ApiResponseHeaderChecker(url, RetrofitInstance.getDownloadService(), headers)
@@ -548,7 +548,7 @@ class Ketch private constructor(
         path: String,
         fileName: String,
         tag: String,
-        headers: HashMap<String, String>,
+        headers: Map<String, String> = emptyMap(),
         metaData: String,
         supportPauseResume: Boolean,
     ): DownloadRequest {
@@ -572,6 +572,49 @@ class Ketch private constructor(
         )
 
         return downloadRequest
+    }
+
+    @Deprecated("Kept for binary compatibility.", level = DeprecationLevel.HIDDEN)
+    fun download(
+        url: String,
+        path: String,
+        fileName: String = FileUtil.getFileNameFromUrl(url),
+        tag: String = "",
+        metaData: String = "",
+        headers: HashMap<String, String> = hashMapOf(),
+        supportPauseResume: Boolean = true,
+    ): Int {
+        return download(url, path, fileName, tag, metaData, headers as Map<String, String>, supportPauseResume)
+    }
+
+    @Deprecated("Kept for binary compatibility.", level = DeprecationLevel.HIDDEN)
+    suspend fun downloadSync(
+        url: String,
+        path: String,
+        fileName: String = FileUtil.getFileNameFromUrl(url),
+        tag: String = "",
+        metaData: String = "",
+        headers: HashMap<String, String> = hashMapOf(),
+        supportPauseResume: Boolean = true,
+    ): Int {
+        return downloadSync(url, path, fileName, tag, metaData, headers as Map<String, String>, supportPauseResume)
+    }
+
+    @Deprecated("Kept for binary compatibility.", level = DeprecationLevel.HIDDEN)
+    suspend fun isContentValid(
+        url: String,
+        headers: HashMap<String, String> = hashMapOf(),
+        eTag: String
+    ): Boolean {
+        return isContentValid(url, headers as Map<String, String>, eTag)
+    }
+
+    @Deprecated("Kept for binary compatibility.", level = DeprecationLevel.HIDDEN)
+    suspend fun getContentLength(
+        url: String,
+        headers: HashMap<String, String> = hashMapOf(),
+    ): Long {
+        return getContentLength(url, headers as Map<String, String>)
     }
 
 }

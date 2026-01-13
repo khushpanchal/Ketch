@@ -26,7 +26,7 @@ data class DownloadModel(
     val fileName: String,
     val tag: String,
     val id: Int,
-    val headers: HashMap<String, String>,
+    val headers: Map<String, String>,
     val timeQueued: Long,
     val status: Status,
     val total: Long,

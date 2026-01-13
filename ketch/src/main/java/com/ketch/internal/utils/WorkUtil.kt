@@ -28,13 +28,13 @@ internal object WorkUtil {
         return Json.decodeFromString(jsonStr)
     }
 
-    fun hashMapToJson(headers: HashMap<String, String>): String {
+    fun hashMapToJson(headers: Map<String, String>): String {
         if (headers.isEmpty()) return ""
         return Json.encodeToString(headers)
     }
 
-    fun jsonToHashMap(jsonString: String): HashMap<String, String> {
-        if (jsonString.isEmpty()) return hashMapOf()
+    fun jsonToHashMap(jsonString: String): Map<String, String> {
+        if (jsonString.isEmpty()) return emptyMap()
         return Json.decodeFromString(jsonString)
     }
 
