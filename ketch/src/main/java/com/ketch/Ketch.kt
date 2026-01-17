@@ -4,8 +4,10 @@ import android.content.Context
 import androidx.work.WorkManager
 import com.ketch.internal.database.DatabaseInstance
 import com.ketch.internal.download.ApiResponseHeaderChecker
+import com.ketch.internal.download.DownloadContentTexts
 import com.ketch.internal.download.DownloadManager
 import com.ketch.internal.download.DownloadRequest
+import com.ketch.internal.download.DownloadTitles
 import com.ketch.internal.network.RetrofitInstance
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.DownloadLogger
@@ -88,6 +90,7 @@ class Ketch private constructor(
     private val context: Context,
     private var downloadConfig: DownloadConfig,
     private var notificationConfig: NotificationConfig,
+    private var buttonTextConfig: ButtonTextConfig,
     private var logger: Logger,
     private var okHttpClient: OkHttpClient
 ) {
@@ -106,6 +109,7 @@ class Ketch private constructor(
             private var notificationConfig: NotificationConfig = NotificationConfig(
                 smallIcon = NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON
             )
+            private var buttonTextConfig: ButtonTextConfig = ButtonTextConfig()
             private var logger: Logger = DownloadLogger(false)
             private lateinit var okHttpClient: OkHttpClient
 
@@ -121,6 +125,10 @@ class Ketch private constructor(
 
             fun setNotificationConfig(config: NotificationConfig) = apply {
                 this.notificationConfig = config
+            }
+
+            fun setButtonTextConfig(config: ButtonTextConfig) = apply {
+                this.buttonTextConfig = config
             }
 
             fun enableLogs(enable: Boolean) = apply {
@@ -151,6 +159,7 @@ class Ketch private constructor(
                         context = context.applicationContext,
                         downloadConfig = downloadConfig,
                         notificationConfig = notificationConfig,
+                        buttonTextConfig = buttonTextConfig,
                         logger = logger,
                         okHttpClient = okHttpClient
                     )
@@ -170,6 +179,7 @@ class Ketch private constructor(
         workManager = WorkManager.getInstance(context.applicationContext),
         downloadConfig = downloadConfig,
         notificationConfig = notificationConfig,
+        buttonTextConfig = buttonTextConfig,
         logger = logger
     )
 
@@ -193,6 +203,8 @@ class Ketch private constructor(
         metaData: String = "",
         headers: HashMap<String, String> = hashMapOf(),
         supportPauseResume: Boolean = true,
+        downloadTitles: DownloadTitles? = null,
+        downloadContentTexts: DownloadContentTexts? = null
     ): Int {
         val downloadRequest = prepareDownloadRequest(
             url = url,
@@ -202,6 +214,8 @@ class Ketch private constructor(
             headers = headers,
             metaData = metaData,
             supportPauseResume = supportPauseResume,
+            downloadTitles = downloadTitles,
+            downloadContentTexts = downloadContentTexts
         )
         downloadManager.downloadAsync(downloadRequest)
         return downloadRequest.id
@@ -226,6 +240,8 @@ class Ketch private constructor(
         metaData: String = "",
         headers: HashMap<String, String> = hashMapOf(),
         supportPauseResume: Boolean = true,
+        downloadTitles: DownloadTitles? = null,
+        downloadContentTexts: DownloadContentTexts? = null
     ): Int {
         val downloadRequest = mutex.withLock {
             prepareDownloadRequest(
@@ -236,6 +252,8 @@ class Ketch private constructor(
                 headers = headers,
                 metaData = metaData,
                 supportPauseResume = supportPauseResume,
+                downloadTitles = downloadTitles,
+                downloadContentTexts = downloadContentTexts
             )
         }
         downloadManager.download(downloadRequest)
@@ -551,6 +569,8 @@ class Ketch private constructor(
         headers: HashMap<String, String>,
         metaData: String,
         supportPauseResume: Boolean,
+        downloadTitles: DownloadTitles?,
+        downloadContentTexts: DownloadContentTexts?
     ): DownloadRequest {
         require(url.isNotEmpty() && path.isNotEmpty() && fileName.isNotEmpty()) {
             "Missing ${if (url.isEmpty()) "url" else if (path.isEmpty()) "path" else "fileName"}"
@@ -569,6 +589,8 @@ class Ketch private constructor(
             headers = headers,
             metaData = metaData,
             supportPauseResume = supportPauseResume,
+            downloadTitles = downloadTitles,
+            downloadContentTexts = downloadContentTexts
         )
 
         return downloadRequest

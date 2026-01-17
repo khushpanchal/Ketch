@@ -155,11 +155,20 @@ dependencies {
      ketch = Ketch.builder().setNotificationConfig(
               config = NotificationConfig(
                 enabled = true,
-                smallIcon = R.drawable.ic_launcher_foreground // It is required to pass the smallIcon for notification.
+                smallIcon = R.drawable.ic_launcher_foreground, // It is required to pass the smallIcon for notification.
+                smallIcons = NotificationSmallIconConfig(
+                  progress = android.R.drawable.stat_sys_download,
+                  success = android.R.drawable.checkbox_on_background,
+                  failed = android.R.drawable.stat_notify_error,
+                  paused = android.R.drawable.ic_media_pause,
+                  cancelled = android.R.drawable.ic_notification_clear_all
+                ) //Default: smallIcon, pass the smallIcon for notification status
               )
             ).build(this)
      ```
+
      
+    
 ## Customisation
   
 - Provide headers with network request.
@@ -177,6 +186,55 @@ dependencies {
    tag = tag, //Default: null
   )
   ```
+
+- Download title: Customize the title on the notification for the statuses
+
+  ```Kotlin
+  ketch.download(url, fileName, path,
+    downloadTitles = DownloadTitles(
+        progressTitle = "Downloading",
+        failedTitle = "Failed",
+        successTitle = "Success",
+        canceledTitle = "Cancelled",
+        pausedTitle = "Paused"
+    ) //Default: Downloading <file name>
+  )
+  ```
+
+- Download title: Customize the context text on the notification for the statuses
+
+  ```Kotlin
+  ketch.download(url, fileName, path,
+    downloadContentTexts = DownloadContentTexts(
+      successContentText = "Success content",
+      failedContentText = "Failed content",
+      canceledContentText = "Cancelled content ",
+      pausedContentText = "Paused content",
+      progressContentText = DownloadProgressContentText()
+    ), //Default: Default download states, and default progress states in NotificationConfig
+  )
+  ```
+  - Customize download progress status (this will not depend on NotificationConfig)
+  
+    ```Kotlin
+    DownloadProgressContentText(
+      onlySeconds = "Left [[#second|%s second|%s seconds]] - total [[#total|%s|%s]] - speed [[#speed|%s|%s]]",
+      onlyMinutes = "शेष [[#minute|%s मिनट|%s मिनट]]",
+      onlyHours = "Còn lại [[#hour|%s giờ|%s giờ]]",
+      minutesAndSeconds = "Left [[#minute|%s minute|%s minutes]] [[#second|%s second|%s seconds]]",
+      hoursAndMinutes = "Left [[#hour|%s hour|%s hours]] [[#minute|%s minute|%s minutes]]",
+    )
+
+    // Template usage:
+   
+    // #second, #minute, #hour: Time variable
+    // #total: Total download file size variable
+    // #speed: Download speed variable
+    // %s: Plural template (always %s)
+
+    // Syntax: <variable>|%s<text singular time>|%s<plural time text> inside the pair [[ ]]
+    // with #speed and #total just have text in <plural time text>
+    ```
   
 - Download config: Provides custom connect and read timeout
 
@@ -216,6 +274,20 @@ dependencies {
         showTime = true //Default: true
       )
     ).build(this)
+  ```
+
+       
+- Notification config: To customize the text button on the notification       
+     
+  ```Kotlin
+  ketch = Ketch.builder().setButtonTextConfig(
+            ButtonTextConfig(
+                cancel = "Cancel",
+                pause = "Pause",
+                resume = "Resume",
+                retry = "Retry"
+            ) //Default: Default value same as above example
+        ).build(this)
   ```
 
 # Blog

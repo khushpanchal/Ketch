@@ -7,6 +7,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
+import com.ketch.ButtonTextConfig
 import com.ketch.DownloadConfig
 import com.ketch.DownloadModel
 import com.ketch.Logger
@@ -41,6 +42,7 @@ internal class DownloadManager(
     private val workManager: WorkManager,
     private val downloadConfig: DownloadConfig,
     private val notificationConfig: NotificationConfig,
+    private val buttonTextConfig: ButtonTextConfig,
     private val logger: Logger
 ) {
 
@@ -138,6 +140,7 @@ internal class DownloadManager(
         val inputDataBuilder = Data.Builder()
             .putString(DownloadConst.KEY_DOWNLOAD_REQUEST, downloadRequest.toJson())
             .putString(DownloadConst.KEY_NOTIFICATION_CONFIG, notificationConfig.toJson())
+            .putString(DownloadConst.KEY_BUTTON_TEXT_CONFIG, buttonTextConfig.toJson())
 
         val inputData = inputDataBuilder.build()
 
@@ -190,7 +193,9 @@ internal class DownloadManager(
                     uuid = downloadWorkRequest.id.toString(),
                     lastModified = System.currentTimeMillis(),
                     userAction = UserAction.START.toString(),
-                    metaData = downloadRequest.metaData
+                    metaData = downloadRequest.metaData,
+                    downloadTitles = downloadRequest.downloadTitles?.toJson() ?: "",
+                    downloadContentTexts = downloadRequest.downloadContentTexts?.toJson() ?: ""
                 )
             )
         }
@@ -219,7 +224,9 @@ internal class DownloadManager(
                     tag = downloadEntity.tag,
                     id = downloadEntity.id,
                     headers = WorkUtil.jsonToHashMap(downloadEntity.headersJson),
-                    metaData = downloadEntity.metaData
+                    metaData = downloadEntity.metaData,
+                    downloadTitles = WorkUtil.jsonToDownloadTitles(downloadEntity.downloadTitles),
+                    downloadContentTexts = WorkUtil.jsonToDownloadContentTexts(downloadEntity.downloadContentTexts)
                 )
             )
         }
@@ -246,8 +253,11 @@ internal class DownloadManager(
                 DownloadNotificationManager(
                     context = context,
                     notificationConfig = notificationConfig,
+                    buttonTextConfig = buttonTextConfig,
                     requestId = id,
-                    fileName = downloadEntity.fileName
+                    fileName = downloadEntity.fileName,
+                    downloadTitles = WorkUtil.jsonToDownloadTitles(downloadEntity.downloadTitles),
+                    downloadContentTexts = WorkUtil.jsonToDownloadContentTexts(downloadEntity.downloadContentTexts)
                 ).sendDownloadCancelledNotification()
             }
         }
@@ -284,7 +294,9 @@ internal class DownloadManager(
                     tag = downloadEntity.tag,
                     id = downloadEntity.id,
                     headers = WorkUtil.jsonToHashMap(downloadEntity.headersJson),
-                    metaData = downloadEntity.metaData
+                    metaData = downloadEntity.metaData,
+                    downloadTitles = WorkUtil.jsonToDownloadTitles(downloadEntity.downloadTitles),
+                    downloadContentTexts = WorkUtil.jsonToDownloadContentTexts(downloadEntity.downloadContentTexts)
                 )
             )
         }

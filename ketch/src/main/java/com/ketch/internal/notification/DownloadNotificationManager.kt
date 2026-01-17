@@ -11,7 +11,10 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.core.app.NotificationCompat
 import androidx.work.ForegroundInfo
+import com.ketch.ButtonTextConfig
 import com.ketch.NotificationConfig
+import com.ketch.internal.download.DownloadContentTexts
+import com.ketch.internal.download.DownloadTitles
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.NotificationConst
 import com.ketch.internal.utils.TextUtil
@@ -33,8 +36,11 @@ import com.ketch.internal.utils.WorkUtil.removeNotification
 internal class DownloadNotificationManager(
     private val context: Context,
     private val notificationConfig: NotificationConfig,
+    private val buttonTextConfig: ButtonTextConfig,
     private val requestId: Int,
-    private val fileName: String
+    private val fileName: String,
+    private val downloadTitles: DownloadTitles?,
+    private val downloadContentTexts: DownloadContentTexts?
 ) {
 
     private var foregroundInfo: ForegroundInfo? = null
@@ -139,20 +145,20 @@ internal class DownloadNotificationManager(
             )
 
             var nb = notificationBuilder
-                .setSmallIcon(notificationConfig.smallIcon)
-                .setContentTitle("Downloading $fileName")
+                .setSmallIcon(notificationConfig.smallIcons.progress)
+                .setContentTitle(downloadTitles?.progressTitle ?: "Downloading $fileName")
                 .setContentIntent(pendingIntentOpen)
                 .setProgress(DownloadConst.MAX_VALUE_PROGRESS, progress, if (length == 0L) true else false)
                 .setOnlyAlertOnce(true)
                 .setOngoing(true)
 
             if (length != 0L) {
-                nb = nb.addAction(-1, NotificationConst.PAUSE_BUTTON_TEXT, pendingIntentPause)
+                nb = nb.addAction(-1, buttonTextConfig.pause, pendingIntentPause)
             }
 
             foregroundInfo = ForegroundInfo(
                 notificationId,
-                nb.addAction(-1, NotificationConst.CANCEL_BUTTON_TEXT, pendingIntentCancel)
+                nb.addAction(-1, buttonTextConfig.cancel, pendingIntentCancel)
                     .setDeleteIntent(pendingIntentDismiss)
                     .build(),
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -178,6 +184,10 @@ internal class DownloadNotificationManager(
         progress: Int,
         length: Long
     ): String {
+        downloadContentTexts?.progressContentText?.let {
+            return TextUtil.getTextFromCustomTemplate(speedInBPerMs, progress, length, it)
+        }
+
         val timeLeftText = TextUtil.getTimeLeftText(speedInBPerMs, progress, length)
         val speedText = TextUtil.getSpeedText(speedInBPerMs)
         val lengthText = TextUtil.getTotalLengthText(length)
@@ -221,9 +231,14 @@ internal class DownloadNotificationManager(
                 )
                 putExtra(
                     NotificationConst.KEY_NOTIFICATION_SMALL_ICON,
-                    notificationConfig.smallIcon
+                    notificationConfig.smallIcons.success
                 )
-                putExtra(DownloadConst.KEY_FILE_NAME, fileName)
+                putExtra(NotificationConst.CANCEL_BUTTON_TEXT, buttonTextConfig.cancel)
+                putExtra(NotificationConst.PAUSE_BUTTON_TEXT, buttonTextConfig.pause)
+                putExtra(NotificationConst.RESUME_BUTTON_TEXT, buttonTextConfig.resume)
+                putExtra(NotificationConst.RETRY_BUTTON_TEXT, buttonTextConfig.retry)
+                putExtra(DownloadConst.KEY_FILE_NAME, downloadTitles?.successTitle ?: fileName)
+                putExtra(DownloadConst.KEY_CONTENT_TEXT, downloadContentTexts?.successContentText)
                 putExtra(DownloadConst.KEY_LENGTH, totalLength)
                 putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
                 putExtra(NotificationConst.KEY_NOTIFICATION_ID, notificationId)
@@ -254,9 +269,14 @@ internal class DownloadNotificationManager(
                 )
                 putExtra(
                     NotificationConst.KEY_NOTIFICATION_SMALL_ICON,
-                    notificationConfig.smallIcon
+                    notificationConfig.smallIcons.failed
                 )
-                putExtra(DownloadConst.KEY_FILE_NAME, fileName)
+                putExtra(NotificationConst.CANCEL_BUTTON_TEXT, buttonTextConfig.cancel)
+                putExtra(NotificationConst.PAUSE_BUTTON_TEXT, buttonTextConfig.pause)
+                putExtra(NotificationConst.RESUME_BUTTON_TEXT, buttonTextConfig.resume)
+                putExtra(NotificationConst.RETRY_BUTTON_TEXT, buttonTextConfig.retry)
+                putExtra(DownloadConst.KEY_FILE_NAME, downloadTitles?.failedTitle ?: fileName)
+                putExtra(DownloadConst.KEY_CONTENT_TEXT, downloadContentTexts?.failedContentText)
                 putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
                 putExtra(NotificationConst.KEY_NOTIFICATION_ID, notificationId)
                 putExtra(DownloadConst.KEY_PROGRESS, currentProgress)
@@ -286,9 +306,14 @@ internal class DownloadNotificationManager(
                 )
                 putExtra(
                     NotificationConst.KEY_NOTIFICATION_SMALL_ICON,
-                    notificationConfig.smallIcon
+                    notificationConfig.smallIcons.cancelled
                 )
-                putExtra(DownloadConst.KEY_FILE_NAME, fileName)
+                putExtra(NotificationConst.CANCEL_BUTTON_TEXT, buttonTextConfig.cancel)
+                putExtra(NotificationConst.PAUSE_BUTTON_TEXT, buttonTextConfig.pause)
+                putExtra(NotificationConst.RESUME_BUTTON_TEXT, buttonTextConfig.resume)
+                putExtra(NotificationConst.RETRY_BUTTON_TEXT, buttonTextConfig.retry)
+                putExtra(DownloadConst.KEY_FILE_NAME, downloadTitles?.canceledTitle ?: fileName)
+                putExtra(DownloadConst.KEY_CONTENT_TEXT, downloadContentTexts?.canceledContentText)
                 putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
                 putExtra(NotificationConst.KEY_NOTIFICATION_ID, notificationId)
                 action = NotificationConst.ACTION_DOWNLOAD_CANCELLED
@@ -318,9 +343,14 @@ internal class DownloadNotificationManager(
                 )
                 putExtra(
                     NotificationConst.KEY_NOTIFICATION_SMALL_ICON,
-                    notificationConfig.smallIcon
+                    notificationConfig.smallIcons.paused
                 )
-                putExtra(DownloadConst.KEY_FILE_NAME, fileName)
+                putExtra(NotificationConst.CANCEL_BUTTON_TEXT, buttonTextConfig.cancel)
+                putExtra(NotificationConst.PAUSE_BUTTON_TEXT, buttonTextConfig.pause)
+                putExtra(NotificationConst.RESUME_BUTTON_TEXT, buttonTextConfig.resume)
+                putExtra(NotificationConst.RETRY_BUTTON_TEXT, buttonTextConfig.retry)
+                putExtra(DownloadConst.KEY_FILE_NAME, downloadTitles?.pausedTitle ?: fileName)
+                putExtra(DownloadConst.KEY_CONTENT_TEXT, downloadContentTexts?.pausedContentText)
                 putExtra(DownloadConst.KEY_PROGRESS, currentProgress)
                 putExtra(DownloadConst.KEY_REQUEST_ID, requestId)
                 putExtra(NotificationConst.KEY_NOTIFICATION_ID, notificationId)

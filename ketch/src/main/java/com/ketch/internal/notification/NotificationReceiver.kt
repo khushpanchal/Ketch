@@ -102,7 +102,12 @@ internal class NotificationReceiver : BroadcastReceiver() {
                 intent.extras?.getInt(NotificationConst.KEY_NOTIFICATION_SMALL_ICON)
                     ?: NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON
             val fileName = intent.extras?.getString(DownloadConst.KEY_FILE_NAME) ?: ""
+            val contentText = intent.extras?.getString(DownloadConst.KEY_CONTENT_TEXT) ?: ""
             val currentProgress = intent.extras?.getInt(DownloadConst.KEY_PROGRESS) ?: 0
+            val cancelButtonText = intent.extras?.getString(NotificationConst.CANCEL_BUTTON_TEXT)
+            val pauseButtonText = intent.extras?.getString(NotificationConst.PAUSE_BUTTON_TEXT)
+            val resumeButtonText = intent.extras?.getString(NotificationConst.RESUME_BUTTON_TEXT)
+            val retryButtonText = intent.extras?.getString(NotificationConst.RETRY_BUTTON_TEXT)
             val requestId =
                 intent.extras?.getInt(DownloadConst.KEY_REQUEST_ID) ?: -1
             val totalLength = intent.extras?.getLong(DownloadConst.KEY_LENGTH)
@@ -175,17 +180,19 @@ internal class NotificationReceiver : BroadcastReceiver() {
                 NotificationCompat.Builder(context, NotificationConst.NOTIFICATION_CHANNEL_ID)
                     .setSmallIcon(notificationSmallIcon)
                     .setContentText(
-                        when (intent.action) {
-                            NotificationConst.ACTION_DOWNLOAD_COMPLETED ->
-                                "Download successful. (${
-                                    TextUtil.getTotalLengthText(
-                                        totalLength
-                                    )
-                                })"
+                        contentText.ifEmpty {
+                            when (intent.action) {
+                                NotificationConst.ACTION_DOWNLOAD_COMPLETED ->
+                                    "Download successful. (${
+                                        TextUtil.getTotalLengthText(
+                                            totalLength
+                                        )
+                                    })"
 
-                            NotificationConst.ACTION_DOWNLOAD_FAILED -> "Download failed."
-                            NotificationConst.ACTION_DOWNLOAD_PAUSED -> "Download paused."
-                            else -> "Download cancelled."
+                                NotificationConst.ACTION_DOWNLOAD_FAILED -> "Download failed."
+                                NotificationConst.ACTION_DOWNLOAD_PAUSED -> "Download paused."
+                                else -> "Download cancelled."
+                            }
                         }
                     )
                     .setContentTitle(fileName)
@@ -198,22 +205,22 @@ internal class NotificationReceiver : BroadcastReceiver() {
             if (intent.action == NotificationConst.ACTION_DOWNLOAD_FAILED) {
                 notificationBuilder = notificationBuilder.addAction(
                     -1,
-                    NotificationConst.RETRY_BUTTON_TEXT,
+                    retryButtonText,
                     pendingIntentRetry
                 )
                     .setProgress(DownloadConst.MAX_VALUE_PROGRESS, currentProgress, false)
-                    .addAction(-1, NotificationConst.CANCEL_BUTTON_TEXT, pendingIntentCancel)
+                    .addAction(-1, cancelButtonText, pendingIntentCancel)
                     .setSubText("$currentProgress%")
             }
             // add resume and cancel button for paused download
             if (intent.action == NotificationConst.ACTION_DOWNLOAD_PAUSED) {
                 notificationBuilder = notificationBuilder.addAction(
                     -1,
-                    NotificationConst.RESUME_BUTTON_TEXT,
+                    resumeButtonText,
                     pendingIntentResume
                 )
                     .setProgress(DownloadConst.MAX_VALUE_PROGRESS, currentProgress, false)
-                    .addAction(-1, NotificationConst.CANCEL_BUTTON_TEXT, pendingIntentCancel)
+                    .addAction(-1, cancelButtonText, pendingIntentCancel)
                     .setSubText("$currentProgress%")
             }
 

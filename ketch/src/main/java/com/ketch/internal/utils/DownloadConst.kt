@@ -8,6 +8,7 @@ internal object DownloadConst {
     const val KEY_FILE_NAME = "key_fileName"
     const val KEY_STATE = "key_state"
     const val KEY_PROGRESS = "key_progress"
+    const val KEY_CONTENT_TEXT = "key_content_text"
     const val MAX_VALUE_PROGRESS = 100
     const val PROGRESS = "progress"
     const val STARTED = "started"
@@ -16,6 +17,7 @@ internal object DownloadConst {
     const val KEY_REQUEST_ID = "key_request_id"
     const val KEY_DOWNLOAD_REQUEST = "key_download_request"
     const val KEY_NOTIFICATION_CONFIG = "key_notification_config"
+    const val KEY_BUTTON_TEXT_CONFIG = "key_button_text_config"
     const val ETAG_HEADER = "ETag"
     const val CONTENT_LENGTH = "Content-Length"
     const val RANGE_HEADER = "Range"

@@ -12,5 +12,21 @@ data class NotificationConfig(
     val showSpeed: Boolean = true,
     val showSize: Boolean = true,
     val showTime: Boolean = true,
-    val smallIcon: Int
+    val smallIcon: Int,
+    val smallIcons: NotificationSmallIconConfig = NotificationSmallIconConfig(
+        progress = smallIcon,
+        success = smallIcon,
+        failed = smallIcon,
+        paused = smallIcon,
+        cancelled = smallIcon
+    )
+)
+
+@Serializable
+data class NotificationSmallIconConfig(
+    val progress: Int,
+    val success: Int,
+    val failed: Int,
+    val paused: Int,
+    val cancelled: Int
 )

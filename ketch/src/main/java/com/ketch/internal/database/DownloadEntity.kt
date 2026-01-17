@@ -13,6 +13,9 @@ internal data class DownloadEntity(
     var path: String = "",
     var fileName: String = "",
     var tag: String = "",
+    val downloadTitles: String = "",
+    val downloadContentTexts: String = "",
+
     @PrimaryKey
     var id: Int = 0,
     var headersJson: String = "",

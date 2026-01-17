@@ -22,10 +22,14 @@ import androidx.recyclerview.widget.SimpleItemAnimator
 import com.ketch.DownloadModel
 import com.ketch.Ketch
 import com.ketch.Status
+import com.ketch.internal.download.DownloadContentTexts
+import com.ketch.internal.download.DownloadProgressContentText
+import com.ketch.internal.download.DownloadTitles
 import com.khush.sample.databinding.FragmentMainBinding
 import com.khush.sample.databinding.ItemFileBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -135,14 +139,34 @@ class MainFragment : Fragment() {
             )
         )
 
-        fragmentMainBinding.bt1.text = "Video 1"
+        fragmentMainBinding.bt1.text = "Video 1 (with custom title)"
         fragmentMainBinding.bt1.setOnClickListener {
             ketch.download(
                 url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_1.mp4",
                 tag = "Video",
-                metaData = "158"
+                metaData = "158",
+                downloadTitles = DownloadTitles(
+                    progressTitle = "Downloading",
+                    failedTitle = "Failed",
+                    successTitle = "Success",
+                    canceledTitle = "Cancelled",
+                    pausedTitle = "Paused"
+                ),
+                downloadContentTexts = DownloadContentTexts(
+                    successContentText = "Success content",
+                    failedContentText = "Failed content",
+                    canceledContentText = "Cancelled content ",
+                    pausedContentText = "Paused content",
+                    progressContentText = DownloadProgressContentText(
+                        onlySeconds = "Left [[#second|%s second|%s seconds]] - total [[#total|%s|%s]] - speed [[#speed|%s|%s]]",
+                        onlyMinutes = "शेष [[#minute|%s मिनट|%s मिनट]]",
+                        onlyHours = "Còn lại [[#hour|%s giờ|%s giờ]]",
+                        minutesAndSeconds = "Left [[#minute|%s minute|%s minutes]] [[#second|%s second|%s seconds]]",
+                        hoursAndMinutes = "Left [[#hour|%s hour|%s hours]] [[#minute|%s minute|%s minutes]]",
+                    )
+                ),
             )
         }
 

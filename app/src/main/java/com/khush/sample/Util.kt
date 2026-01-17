@@ -42,7 +42,7 @@ object Util {
 
     private fun getSpeedText(speedInBPerMs: Float): String {
         var value = speedInBPerMs * SEC_IN_MILLIS
-        val units = arrayOf("b/s", "kb/s", "mb/s", "gb/s")
+        val units = arrayOf("B/s", "KB/s", "MB/s", "GB/s")
         var unitIndex = 0
 
         while (value >= VALUE_500 && unitIndex < units.size - 1) {
@@ -55,7 +55,7 @@ object Util {
 
     fun getTotalLengthText(lengthInBytes: Long): String {
         var value = lengthInBytes.toFloat()
-        val units = arrayOf("b", "kb", "mb", "gb")
+        val units = arrayOf("B", "KB", "MB", "GB")
         var unitIndex = 0
 
         while (value >= VALUE_500 && unitIndex < units.size - 1) {

@@ -13,4 +13,6 @@ internal data class DownloadRequest(
     val headers: HashMap<String, String> = hashMapOf(),
     val metaData: String = "",
     val supportPauseResume: Boolean = true,
+    val downloadTitles: DownloadTitles? = null,
+    val downloadContentTexts: DownloadContentTexts? = null
 )

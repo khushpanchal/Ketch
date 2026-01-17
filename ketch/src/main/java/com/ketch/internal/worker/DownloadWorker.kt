@@ -48,19 +48,28 @@ internal class DownloadWorker(
                 inputData.getString(DownloadConst.KEY_NOTIFICATION_CONFIG) ?: ""
             )
 
+        val buttonTextConfig = WorkUtil.jsonToButtonTextConfig(
+            inputData.getString(DownloadConst.KEY_BUTTON_TEXT_CONFIG) ?: ""
+        )
+
         val id = downloadRequest.id
         val url = downloadRequest.url
         val dirPath = downloadRequest.path
         val fileName = downloadRequest.fileName
         val headers = downloadRequest.headers
         val supportPauseResume = downloadRequest.supportPauseResume // in case of false, we will not store total length info in DB
+        val downloadTitles = downloadRequest.downloadTitles
+        val downloadContentText = downloadRequest.downloadContentTexts
 
         if (notificationConfig.enabled) {
             downloadNotificationManager = DownloadNotificationManager(
                 context = context,
                 notificationConfig = notificationConfig,
+                buttonTextConfig = buttonTextConfig,
                 requestId = id,
-                fileName = fileName
+                fileName = fileName,
+                downloadTitles = downloadTitles,
+                downloadContentTexts = downloadContentText
             )
         }
 
