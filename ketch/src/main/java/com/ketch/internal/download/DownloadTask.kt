@@ -41,7 +41,7 @@ internal class DownloadTask(
 
         var response = downloadService.getUrl(url, headers)
         if (response.code() == DownloadConst.HTTP_RANGE_NOT_SATISFY || isRedirection(
-                response.raw().request().url().toString()
+                response.request().url().toString()
             )
         ) {
             FileUtil.deleteFileIfExists(path, fileName)

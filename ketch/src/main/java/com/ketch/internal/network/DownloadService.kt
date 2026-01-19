@@ -1,25 +1,16 @@
 package com.ketch.internal.network
 
-import okhttp3.ResponseBody
-import retrofit2.Response
-import retrofit2.http.GET
-import retrofit2.http.HEAD
-import retrofit2.http.HeaderMap
-import retrofit2.http.Streaming
-import retrofit2.http.Url
+import okhttp3.Response
 
 internal interface DownloadService {
-    @Streaming
-    @GET
     suspend fun getUrl(
-        @Url url: String,
-        @HeaderMap headers: Map<String, String>
-    ): Response<ResponseBody>
+        url: String,
+        headers: Map<String, String>,
+    ): Response
 
-    @HEAD
     suspend fun getHeadersOnly(
-        @Url url: String,
-        @HeaderMap headers: Map<String, String>
-    ): Response<Void>
+        url: String,
+        headers: Map<String, String>,
+    ): Response
 
 }

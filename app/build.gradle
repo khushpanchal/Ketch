@@ -1,3 +1,6 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import org.jetbrains.kotlin.gradle.dsl.KotlinVersion
+
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
@@ -9,11 +12,11 @@ android {
 
     defaultConfig {
         applicationId "com.khush.sample"
-        minSdk 21
+        minSdk 19
         targetSdk 34
         versionCode 1
         versionName "1.0"
-
+        multiDexEnabled = true
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -27,8 +30,12 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = '17'
+    kotlin {
+        compilerOptions {
+            jvmTarget = JvmTarget.JVM_17
+            apiVersion = KotlinVersion.KOTLIN_2_0
+            languageVersion = KotlinVersion.KOTLIN_2_0
+        }
     }
     buildFeatures {
         viewBinding true
@@ -36,9 +43,9 @@ android {
 }
 
 dependencies {
-
+    implementation "androidx.multidex:multidex:2.0.1"
     implementation "androidx.core:core-ktx:1.13.1"
-    implementation "androidx.appcompat:appcompat:1.7.0"
+    implementation "androidx.appcompat:appcompat:1.6.1"
     implementation "com.google.android.material:material:1.12.0"
     implementation "androidx.activity:activity:1.9.0"
     implementation "androidx.constraintlayout:constraintlayout:2.1.4"

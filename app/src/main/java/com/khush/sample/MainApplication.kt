@@ -1,11 +1,11 @@
 package com.khush.sample
 
-import android.app.Application
+import androidx.multidex.MultiDexApplication
 import com.ketch.DownloadConfig
 import com.ketch.Ketch
 import com.ketch.NotificationConfig
 
-class MainApplication : Application() {
+class MainApplication : MultiDexApplication() {
 
     lateinit var ketch: Ketch
 

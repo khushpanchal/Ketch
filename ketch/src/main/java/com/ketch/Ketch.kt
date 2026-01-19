@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import okhttp3.Call
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 
@@ -89,7 +90,7 @@ class Ketch private constructor(
     private var downloadConfig: DownloadConfig,
     private var notificationConfig: NotificationConfig,
     private var logger: Logger,
-    private var okHttpClient: OkHttpClient
+    private var callFactory: Call.Factory,
 ) {
 
     private val mutex = Mutex()
@@ -107,10 +108,10 @@ class Ketch private constructor(
                 smallIcon = NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON
             )
             private var logger: Logger = DownloadLogger(false)
-            private lateinit var okHttpClient: OkHttpClient
+            private lateinit var callFactory: Call.Factory
 
             /**
-             * Set download config: It has no effect if using [setOkHttpClient] function
+             * Set download config: It has no effect if using [setCallFactory] function
              * Pass timeout values inside okHttpClient itself
              *
              * @param config [DownloadConfig]
@@ -131,16 +132,19 @@ class Ketch private constructor(
                 this.logger = logger
             }
 
-            fun setOkHttpClient(okHttpClient: OkHttpClient) = apply {
-                this.okHttpClient = okHttpClient
+            @Deprecated("Use setCallFactory instead.", replaceWith = ReplaceWith("setCallFactory(okHttpClient)"))
+            fun setOkHttpClient(okHttpClient: OkHttpClient) = setCallFactory(okHttpClient)
+
+            fun setCallFactory(callFactory: Call.Factory) = apply {
+                this.callFactory = callFactory
             }
 
             @Synchronized
             fun build(context: Context): Ketch {
                 if (ketchInstance == null) {
 
-                    if (!::okHttpClient.isInitialized) {
-                        okHttpClient = OkHttpClient
+                    if (!::callFactory.isInitialized) {
+                        callFactory = OkHttpClient
                             .Builder()
                             .connectTimeout(downloadConfig.connectTimeOutInMs, TimeUnit.MILLISECONDS)
                             .readTimeout(downloadConfig.readTimeOutInMs, TimeUnit.MILLISECONDS)
@@ -152,7 +156,7 @@ class Ketch private constructor(
                         downloadConfig = downloadConfig,
                         notificationConfig = notificationConfig,
                         logger = logger,
-                        okHttpClient = okHttpClient
+                        callFactory = callFactory,
                     )
                 }
                 return ketchInstance!!
@@ -161,7 +165,7 @@ class Ketch private constructor(
     }
 
     init {
-        RetrofitInstance.getDownloadService(okHttpClient = okHttpClient)
+        RetrofitInstance.getDownloadService(callFactory = callFactory)
     }
 
     private val downloadManager = DownloadManager(
