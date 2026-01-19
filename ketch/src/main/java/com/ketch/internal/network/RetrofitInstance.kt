@@ -1,6 +1,7 @@
 package com.ketch.internal.network
 
 import com.ketch.internal.utils.DownloadConst
+import okhttp3.Call
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import java.util.concurrent.TimeUnit
@@ -11,7 +12,7 @@ internal object RetrofitInstance {
     private var downloadService: DownloadService? = null
 
     fun getDownloadService(
-        okHttpClient: OkHttpClient =
+        callFactory: Call.Factory =
             OkHttpClient
                 .Builder()
                 .connectTimeout(DownloadConst.DEFAULT_VALUE_CONNECT_TIMEOUT_MS, TimeUnit.MILLISECONDS)
@@ -24,7 +25,7 @@ internal object RetrofitInstance {
                     downloadService = Retrofit
                         .Builder()
                         .baseUrl(DownloadConst.BASE_URL)
-                        .client(okHttpClient)
+                        .callFactory(callFactory)
                         .build()
                         .create(DownloadService::class.java)
                 }
