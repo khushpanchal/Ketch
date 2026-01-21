@@ -6,8 +6,8 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.ketch.Status
 import com.ketch.internal.database.DatabaseInstance
-import com.ketch.internal.download.DownloadTask
 import com.ketch.internal.download.ApiResponseHeaderChecker
+import com.ketch.internal.download.DownloadTask
 import com.ketch.internal.network.RetrofitInstance
 import com.ketch.internal.notification.DownloadNotificationManager
 import com.ketch.internal.utils.DownloadConst
@@ -51,6 +51,7 @@ internal class DownloadWorker(
         val id = downloadRequest.id
         val url = downloadRequest.url
         val dirPath = downloadRequest.path
+        val customTitle = downloadRequest.customTitle
         val fileName = downloadRequest.fileName
         val headers = downloadRequest.headers
         val supportPauseResume = downloadRequest.supportPauseResume // in case of false, we will not store total length info in DB
@@ -60,7 +61,8 @@ internal class DownloadWorker(
                 context = context,
                 notificationConfig = notificationConfig,
                 requestId = id,
-                fileName = fileName
+                fileName = fileName,
+                customTitle = customTitle,
             )
         }
 
@@ -197,7 +199,6 @@ internal class DownloadWorker(
 
                     }
                 } else {
-
                     downloadDao.find(id)?.copy(
                         status = Status.FAILED.toString(),
                         failureReason = e.message ?: "",

@@ -83,11 +83,13 @@ internal class DownloadManager(
                                             msg = "Download in Progress. FileName: ${downloadEntity?.fileName}, " +
                                                     "ID: ${downloadEntity?.id}, " +
                                                     "Size in bytes: ${downloadEntity?.totalBytes}, " +
-                                                    "downloadPercent: ${if (downloadEntity != null && downloadEntity.totalBytes.toInt() != 0) {
-                                                        ((downloadEntity.downloadedBytes * 100) / downloadEntity.totalBytes).toInt()
-                                                    } else {
-                                                        0
-                                                    }}%, " +
+                                                    "downloadPercent: ${
+                                                        if (downloadEntity != null && downloadEntity.totalBytes.toInt() != 0) {
+                                                            ((downloadEntity.downloadedBytes * 100) / downloadEntity.totalBytes).toInt()
+                                                        } else {
+                                                            0
+                                                        }
+                                                    }%, " +
                                                     "downloadSpeedInBytesPerMilliSeconds: ${downloadEntity?.speedInBytePerMs} b/ms"
                                         )
 
@@ -190,7 +192,8 @@ internal class DownloadManager(
                     uuid = downloadWorkRequest.id.toString(),
                     lastModified = System.currentTimeMillis(),
                     userAction = UserAction.START.toString(),
-                    metaData = downloadRequest.metaData
+                    metaData = downloadRequest.metaData,
+                    customTitle = downloadRequest.customTitle
                 )
             )
         }
@@ -219,7 +222,8 @@ internal class DownloadManager(
                     tag = downloadEntity.tag,
                     id = downloadEntity.id,
                     headers = WorkUtil.jsonToHashMap(downloadEntity.headersJson),
-                    metaData = downloadEntity.metaData
+                    metaData = downloadEntity.metaData,
+                    customTitle = downloadEntity.customTitle,
                 )
             )
         }
@@ -247,7 +251,8 @@ internal class DownloadManager(
                     context = context,
                     notificationConfig = notificationConfig,
                     requestId = id,
-                    fileName = downloadEntity.fileName
+                    fileName = downloadEntity.fileName,
+                    customTitle = downloadEntity.customTitle
                 ).sendDownloadCancelledNotification()
             }
         }
@@ -284,7 +289,8 @@ internal class DownloadManager(
                     tag = downloadEntity.tag,
                     id = downloadEntity.id,
                     headers = WorkUtil.jsonToHashMap(downloadEntity.headersJson),
-                    metaData = downloadEntity.metaData
+                    metaData = downloadEntity.metaData,
+                    customTitle = downloadEntity.customTitle
                 )
             )
         }
@@ -417,7 +423,10 @@ internal class DownloadManager(
                 }
                 downloadDao.remove(it.id)
                 removeNotification(context, it.id) // In progress notification
-                removeNotification(context, it.id + 1) // Cancelled, Paused, Failed, Success notification
+                removeNotification(
+                    context,
+                    it.id + 1
+                ) // Cancelled, Paused, Failed, Success notification
             }
         }
     }
@@ -433,7 +442,10 @@ internal class DownloadManager(
                     deleteFileIfExists(path, fileName)
                 }
                 removeNotification(context, it.id) // In progress notification
-                removeNotification(context, it.id + 1) // Cancelled, Paused, Failed, Success notification
+                removeNotification(
+                    context,
+                    it.id + 1
+                ) // Cancelled, Paused, Failed, Success notification
             }
             downloadDao.deleteAll()
         }
@@ -451,7 +463,10 @@ internal class DownloadManager(
                 }
                 downloadDao.remove(it.id)
                 removeNotification(context, it.id) // In progress notification
-                removeNotification(context, it.id + 1) // Cancelled, Paused, Failed, Success notification
+                removeNotification(
+                    context,
+                    it.id + 1
+                ) // Cancelled, Paused, Failed, Success notification
             }
         }
     }
@@ -485,11 +500,12 @@ internal class DownloadManager(
     }
 
     fun observeDownloadsByStatus(status: Status): Flow<List<DownloadModel>> {
-        return downloadDao.getAllEntityByStatusFlow(status.name).distinctUntilChanged().map { entityList ->
-            entityList.map { entity ->
-                entity.toDownloadModel()
+        return downloadDao.getAllEntityByStatusFlow(status.name).distinctUntilChanged()
+            .map { entityList ->
+                entityList.map { entity ->
+                    entity.toDownloadModel()
+                }
             }
-        }
     }
 
     fun observeDownloadsByIds(ids: List<Int>): Flow<List<DownloadModel?>> {

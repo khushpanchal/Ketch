@@ -213,7 +213,11 @@ dependencies {
         smallIcon = smallIcon, //It is required
         showSpeed = true, //Default: true
         showSize = true, //Default: true
-        showTime = true //Default: true
+        showTime = true, //Default: true
+        showCancelAction = true, //Default: true
+        showPauseAction = true, //Default: true
+        showResumeAction = true, //Default: true
+        showRetryAction= true, //Default: true
       )
     ).build(this)
   ```

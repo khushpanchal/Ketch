@@ -142,7 +142,8 @@ class MainFragment : Fragment() {
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_1.mp4",
                 tag = "Video",
-                metaData = "158"
+                metaData = "158",
+                customTitle = "Video 1 File"
             )
         }
 
@@ -232,7 +233,7 @@ class MainFragment : Fragment() {
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Pdf_1.pdf",
                 tag = "Document",
-                metaData = "5"
+                metaData = "5",
             )
         }
     }

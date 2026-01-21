@@ -89,6 +89,19 @@ internal class NotificationReceiver : BroadcastReceiver() {
         )
 
         if (intent.action in notificationActionList) {
+
+            val notificationCancelActionEnable =
+                intent.extras?.getBoolean(NotificationConst.KEY_NOTIFICATION_CANCEL_ACTION)
+                    ?: NotificationConst.DEFAULT_VALUE_ACTION_ENABLE
+            val notificationRetryActionEnable =
+                intent.extras?.getBoolean(NotificationConst.KEY_NOTIFICATION_RETRY_ACTION)
+                    ?: NotificationConst.DEFAULT_VALUE_ACTION_ENABLE
+            val notificationResumeActionEnable =
+                intent.extras?.getBoolean(NotificationConst.KEY_NOTIFICATION_RESUME_ACTION)
+                    ?: NotificationConst.DEFAULT_VALUE_ACTION_ENABLE
+            val notificationPauseActionEnable =
+                intent.extras?.getBoolean(NotificationConst.KEY_NOTIFICATION_PAUSE_ACTION)
+                    ?: NotificationConst.DEFAULT_VALUE_ACTION_ENABLE
             val notificationChannelName =
                 intent.extras?.getString(NotificationConst.KEY_NOTIFICATION_CHANNEL_NAME)
                     ?: NotificationConst.DEFAULT_VALUE_NOTIFICATION_CHANNEL_NAME
@@ -196,25 +209,38 @@ internal class NotificationReceiver : BroadcastReceiver() {
 
             // add retry and cancel button for failed download
             if (intent.action == NotificationConst.ACTION_DOWNLOAD_FAILED) {
-                notificationBuilder = notificationBuilder.addAction(
-                    -1,
-                    NotificationConst.RETRY_BUTTON_TEXT,
-                    pendingIntentRetry
-                )
-                    .setProgress(DownloadConst.MAX_VALUE_PROGRESS, currentProgress, false)
-                    .addAction(-1, NotificationConst.CANCEL_BUTTON_TEXT, pendingIntentCancel)
-                    .setSubText("$currentProgress%")
+                notificationBuilder = notificationBuilder.apply {
+                    if (notificationRetryActionEnable) {
+                        addAction(
+                            -1,
+                            NotificationConst.RETRY_BUTTON_TEXT,
+                            pendingIntentRetry
+                        )
+                    }
+                    if (notificationCancelActionEnable) {
+                        addAction(-1, NotificationConst.CANCEL_BUTTON_TEXT, pendingIntentCancel)
+                    }
+                    setProgress(DownloadConst.MAX_VALUE_PROGRESS, currentProgress, false)
+                    setSubText("$currentProgress%")
+                }
             }
             // add resume and cancel button for paused download
             if (intent.action == NotificationConst.ACTION_DOWNLOAD_PAUSED) {
-                notificationBuilder = notificationBuilder.addAction(
-                    -1,
-                    NotificationConst.RESUME_BUTTON_TEXT,
-                    pendingIntentResume
-                )
-                    .setProgress(DownloadConst.MAX_VALUE_PROGRESS, currentProgress, false)
-                    .addAction(-1, NotificationConst.CANCEL_BUTTON_TEXT, pendingIntentCancel)
-                    .setSubText("$currentProgress%")
+                notificationBuilder = notificationBuilder.apply {
+                    if (notificationResumeActionEnable) {
+                        addAction(
+                            -1,
+                            NotificationConst.RESUME_BUTTON_TEXT,
+                            pendingIntentResume
+                        )
+                    }
+
+                    if (notificationCancelActionEnable) {
+                        addAction(-1, NotificationConst.CANCEL_BUTTON_TEXT, pendingIntentCancel)
+                    }
+                    setProgress(DownloadConst.MAX_VALUE_PROGRESS, currentProgress, false)
+                    setSubText("$currentProgress%")
+                }
             }
 
             val notification = notificationBuilder

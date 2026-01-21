@@ -12,6 +12,11 @@ internal object NotificationConst {
     const val KEY_NOTIFICATION_SMALL_ICON = "key_small_notification_icon"
     const val DEFAULT_VALUE_NOTIFICATION_SMALL_ICON = -1
     const val KEY_NOTIFICATION_ID = "key_notification_id"
+    const val KEY_NOTIFICATION_CANCEL_ACTION = "key_notification_cancel_action"
+    const val DEFAULT_VALUE_ACTION_ENABLE = true
+    const val KEY_NOTIFICATION_PAUSE_ACTION = "key_notification_pause_action"
+    const val KEY_NOTIFICATION_RESUME_ACTION = "key_notification_resume_action"
+    const val KEY_NOTIFICATION_RETRY_ACTION = "key_notification_retry_action"
 
     // Actions
     const val ACTION_NOTIFICATION_DISMISSED = "ACTION_NOTIFICATION_DISMISSED"

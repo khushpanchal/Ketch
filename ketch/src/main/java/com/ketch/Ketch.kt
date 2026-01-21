@@ -142,8 +142,14 @@ class Ketch private constructor(
                     if (!::okHttpClient.isInitialized) {
                         okHttpClient = OkHttpClient
                             .Builder()
-                            .connectTimeout(downloadConfig.connectTimeOutInMs, TimeUnit.MILLISECONDS)
-                            .readTimeout(downloadConfig.readTimeOutInMs, TimeUnit.MILLISECONDS)
+                            .connectTimeout(
+                                downloadConfig.connectTimeOutInMs,
+                                TimeUnit.MILLISECONDS
+                            )
+                            .readTimeout(
+                                downloadConfig.readTimeOutInMs,
+                                TimeUnit.MILLISECONDS
+                            )
                             .build()
                     }
 
@@ -183,6 +189,7 @@ class Ketch private constructor(
      * @param metaData Optional metaData set for adding any extra download info
      * @param headers Optional headers sent when making api call for file download
      * @param supportPauseResume Optional flag to enable pause and resume functionality
+     * @param customTitle Name of the tile that show in notification progress
      * @return Unique Download ID associated with current download
      */
     fun download(
@@ -193,6 +200,7 @@ class Ketch private constructor(
         metaData: String = "",
         headers: HashMap<String, String> = hashMapOf(),
         supportPauseResume: Boolean = true,
+        customTitle: String? = null,
     ): Int {
         val downloadRequest = prepareDownloadRequest(
             url = url,
@@ -202,6 +210,7 @@ class Ketch private constructor(
             headers = headers,
             metaData = metaData,
             supportPauseResume = supportPauseResume,
+            customTitle = customTitle
         )
         downloadManager.downloadAsync(downloadRequest)
         return downloadRequest.id
@@ -226,6 +235,7 @@ class Ketch private constructor(
         metaData: String = "",
         headers: HashMap<String, String> = hashMapOf(),
         supportPauseResume: Boolean = true,
+        customTitle: String?
     ): Int {
         val downloadRequest = mutex.withLock {
             prepareDownloadRequest(
@@ -236,6 +246,7 @@ class Ketch private constructor(
                 headers = headers,
                 metaData = metaData,
                 supportPauseResume = supportPauseResume,
+                customTitle = customTitle
             )
         }
         downloadManager.download(downloadRequest)
@@ -517,7 +528,8 @@ class Ketch private constructor(
      * @param status
      * @return [DownloadModel] if present else null
      */
-    suspend fun getDownloadModelByStatus(status: Status) = downloadManager.getDownloadModelByStatus(status)
+    suspend fun getDownloadModelByStatus(status: Status) =
+        downloadManager.getDownloadModelByStatus(status)
 
     /**
      * Suspend function to get download model by list of tags
@@ -525,7 +537,8 @@ class Ketch private constructor(
      * @param tags
      * @return List of [DownloadModel]
      */
-    suspend fun getDownloadModelByTags(tags: List<String>) = downloadManager.getDownloadModelByTags(tags)
+    suspend fun getDownloadModelByTags(tags: List<String>) =
+        downloadManager.getDownloadModelByTags(tags)
 
     /**
      * Suspend function to get download model by list of ids
@@ -541,7 +554,8 @@ class Ketch private constructor(
      * @param statuses
      * @return List of [DownloadModel]
      */
-    suspend fun getDownloadModelByStatuses(statuses: List<Status>) = downloadManager.getDownloadModelByStatuses(statuses)
+    suspend fun getDownloadModelByStatuses(statuses: List<Status>) =
+        downloadManager.getDownloadModelByStatuses(statuses)
 
     private fun prepareDownloadRequest(
         url: String,
@@ -551,6 +565,7 @@ class Ketch private constructor(
         headers: HashMap<String, String>,
         metaData: String,
         supportPauseResume: Boolean,
+        customTitle: String?,
     ): DownloadRequest {
         require(url.isNotEmpty() && path.isNotEmpty() && fileName.isNotEmpty()) {
             "Missing ${if (url.isEmpty()) "url" else if (path.isEmpty()) "path" else "fileName"}"
@@ -569,6 +584,7 @@ class Ketch private constructor(
             headers = headers,
             metaData = metaData,
             supportPauseResume = supportPauseResume,
+            customTitle = customTitle
         )
 
         return downloadRequest

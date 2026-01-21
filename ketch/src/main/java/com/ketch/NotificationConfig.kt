@@ -12,5 +12,9 @@ data class NotificationConfig(
     val showSpeed: Boolean = true,
     val showSize: Boolean = true,
     val showTime: Boolean = true,
-    val smallIcon: Int
+    val smallIcon: Int,
+    val showCancelAction: Boolean = true,
+    val showPauseAction: Boolean = true,
+    val showResumeAction: Boolean = true,
+    val showRetryAction: Boolean = true,
 )
