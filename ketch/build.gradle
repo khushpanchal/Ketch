@@ -3,6 +3,7 @@ plugins {
     id 'org.jetbrains.kotlin.android'
     id 'com.google.devtools.ksp'
     id 'org.jetbrains.kotlin.plugin.serialization'
+    id 'maven-publish'
 }
 
 android {
@@ -45,3 +46,18 @@ dependencies {
     ksp 'androidx.room:room-compiler:2.6.1'
     implementation 'androidx.room:room-ktx:2.6.1'
 }
+
+afterEvaluate {
+    publishing {
+        publications {
+            create("release", MavenPublication) {
+                groupId = 'com.github.MehdiSekoba'
+                artifactId = 'Ketch'
+                version = '2.0.6'
+            }
+        }
+    }
+}
+
+
+
