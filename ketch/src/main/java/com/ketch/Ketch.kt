@@ -13,6 +13,7 @@ import com.ketch.internal.utils.FileUtil
 import com.ketch.internal.utils.NotificationConst
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
@@ -74,7 +75,7 @@ import java.util.concurrent.TimeUnit
  *
  * JOURNEY OF SINGLE DOWNLOAD FILE:
  *
- * [Status.QUEUED] -> [Status.STARTED] -> [Status.PROGRESS] -> Download in progress
+ * [Status.QUEUED] or [Status.RETRY_QUEUED] -> [Status.STARTED] -> [Status.PROGRESS] -> Download in progress
  * Terminating states: [Status.PAUSED], [Status.CANCELLED], [Status.FAILED], [Status.SUCCESS]
  *
  * @property context Application context
@@ -164,9 +165,11 @@ class Ketch private constructor(
         RetrofitInstance.getDownloadService(okHttpClient = okHttpClient)
     }
 
+    private val downloadDao = DatabaseInstance.getInstance(context).downloadDao()
+
     private val downloadManager = DownloadManager(
         context = context,
-        downloadDao = DatabaseInstance.getInstance(context).downloadDao(),
+        downloadDao = downloadDao,
         workManager = WorkManager.getInstance(context.applicationContext),
         downloadConfig = downloadConfig,
         notificationConfig = notificationConfig,
@@ -558,13 +561,13 @@ class Ketch private constructor(
 
         // This will create a temp file which will be renamed after successful download.
         // This will also make sure each file name is unique.
-        val newFileName = FileUtil.resolveNamingConflicts(fileName, path)
-        FileUtil.createTempFileIfNotExists(path, newFileName)
+        val resolvedName = FileUtil.resolveNamingConflicts(fileName, path)
+        FileUtil.createTempFileIfNotExists(path, resolvedName)
 
         val downloadRequest = DownloadRequest(
             url = url,
             path = path,
-            fileName = newFileName,
+            fileName = resolvedName,
             tag = tag,
             headers = headers,
             metaData = metaData,

@@ -2,6 +2,7 @@ package com.ketch.internal.utils
 
 import android.content.Context
 import androidx.core.app.NotificationManagerCompat
+import com.ketch.DownloadConfig
 import com.ketch.NotificationConfig
 import com.ketch.internal.download.DownloadRequest
 import kotlinx.serialization.encodeToString
@@ -24,6 +25,17 @@ internal object WorkUtil {
     fun jsonToNotificationConfig(jsonStr: String): NotificationConfig {
         if (jsonStr.isEmpty()) {
             return NotificationConfig(smallIcon = NotificationConst.DEFAULT_VALUE_NOTIFICATION_SMALL_ICON)
+        }
+        return Json.decodeFromString(jsonStr)
+    }
+
+    fun DownloadConfig.toJson(): String {
+        return Json.encodeToString(this)
+    }
+
+    fun jsonToDownloadConfig(jsonStr: String): DownloadConfig {
+        if (jsonStr.isEmpty()) {
+            return DownloadConfig()
         }
         return Json.decodeFromString(jsonStr)
     }

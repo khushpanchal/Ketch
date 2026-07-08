@@ -4,6 +4,8 @@ enum class Status {
 
     QUEUED,
 
+    RETRY_QUEUED,
+
     STARTED,
 
     PROGRESS,

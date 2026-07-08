@@ -1,5 +1,6 @@
 package com.ketch.internal.download
 
+import com.ketch.KetchException
 import com.ketch.internal.network.DownloadService
 import com.ketch.internal.utils.DownloadConst
 import com.ketch.internal.utils.FileUtil
@@ -41,7 +42,7 @@ internal class DownloadTask(
 
         var response = downloadService.getUrl(url, headers)
         if (response.code() == DownloadConst.HTTP_RANGE_NOT_SATISFY || isRedirection(
-                response.raw().request().url().toString()
+                response.raw().request.url.toString()
             )
         ) {
             FileUtil.deleteFileIfExists(path, fileName)
@@ -55,9 +56,13 @@ internal class DownloadTask(
         if (response.code() !in VALUE_200..VALUE_299 ||
             responseBody == null
         ) {
-            throw IOException(
-                "Something went wrong, response code: ${response.code()}, responseBody null: ${responseBody == null}"
-            )
+            val code = response.code()
+            val msg = "Something went wrong, response code: $code, responseBody null: ${responseBody == null}"
+            if (code in 400..499) {
+                throw KetchException.NonRetryableException(msg)
+            } else {
+                throw KetchException.RetryableException(msg)
+            }
         }
 
         var totalBytes = responseBody.contentLength()

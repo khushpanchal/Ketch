@@ -57,7 +57,7 @@ internal class DownloadNotificationManager(
      * @param update Boolean to check if showing notification for first time of updating it
      * @return ForegroundInfo to be set in Worker
      */
-    fun sendUpdateNotification(
+    fun createUpdateNotification(
         progress: Int = 0,
         speedInBPerMs: Float = 0F,
         length: Long = 0L,
@@ -84,9 +84,6 @@ internal class DownloadNotificationManager(
                 }
             )
         } else {
-            // Remove any previous notification
-            removeNotification(context, requestId) // In progress notification
-            removeNotification(context, requestId + 1) // Cancelled, Paused, Failed, Success notification
 
             // Open Application (Send the unique download request id in intent)
             val intentOpen = context.packageManager.getLaunchIntentForPackage(context.packageName)
@@ -343,6 +340,12 @@ internal class DownloadNotificationManager(
         )
         channel.description = notificationConfig.channelDescription
         context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+    }
+
+    fun clearPreviousNotifications() {
+        // Remove any previous notification
+        removeNotification(context, requestId) // In progress notification
+        removeNotification(context, requestId + 1) // Cancelled, Paused, Failed, Success notification
     }
 
 }

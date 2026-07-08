@@ -4,7 +4,6 @@ import android.os.Environment
 import android.webkit.URLUtil
 import java.io.File
 import java.security.MessageDigest
-import java.util.UUID
 import kotlin.experimental.and
 
 internal object FileUtil {
@@ -15,7 +14,14 @@ internal object FileUtil {
 
     fun getFileNameFromUrl(url: String): String {
         val guessFileName = URLUtil.guessFileName(url, null, null)
-        return UUID.randomUUID().toString() + "-" + guessFileName
+        val hash = try {
+            val md = MessageDigest.getInstance("MD5")
+            val bytes = md.digest(url.toByteArray(charset("UTF-8")))
+            bytes.joinToString("") { "%02x".format(it) }.take(8)
+        } catch (e: Exception) {
+            url.hashCode().toString(16)
+        }
+        return "$hash-$guessFileName"
     }
 
     fun getDefaultDownloadPath(): String {
@@ -56,15 +62,13 @@ internal object FileUtil {
     fun resolveNamingConflicts(fileName: String, path: String): String {
         var newFileName = fileName
         var file = File(path, newFileName)
-        var tempFile = getTempFileForFile(file)
         var counter = 1
 
-        while (file.exists() || tempFile.exists()) {
+        while (file.exists()) {
             val name = fileName.substringBeforeLast(".")
             val extension = fileName.substringAfterLast(".")
             newFileName = "$name ($counter).$extension"
             file = File(path, newFileName)
-            tempFile = getTempFileForFile(file)
             counter++
         }
 

@@ -138,7 +138,7 @@ class MainFragment : Fragment() {
         fragmentMainBinding.bt1.text = "Video 1"
         fragmentMainBinding.bt1.setOnClickListener {
             ketch.download(
-                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                url = "https://download.blender.org/peach/bigbuckbunny_movies/big_buck_bunny_720p_h264.mov",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_1.mp4",
                 tag = "Video",
@@ -149,7 +149,7 @@ class MainFragment : Fragment() {
         fragmentMainBinding.bt2.text = "Video 2"
         fragmentMainBinding.bt2.setOnClickListener {
             ketch.download(
-                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                url = "https://archive.org/download/ElephantsDream/ed_1024.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_2.mp4",
                 tag = "Video",
@@ -160,7 +160,7 @@ class MainFragment : Fragment() {
         fragmentMainBinding.bt3.text = "Video 3"
         fragmentMainBinding.bt3.setOnClickListener {
             ketch.download(
-                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+                url = "https://archive.org/download/subaru-outback-on-street-and-dirt/SubaruOutbackOnStreetAndDirt.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_3.mp4",
                 tag = "Video",
@@ -182,7 +182,7 @@ class MainFragment : Fragment() {
         fragmentMainBinding.bt5.text = "Pdf 1"
         fragmentMainBinding.bt5.setOnClickListener {
             ketch.download(
-                url = "https://sample-videos.com/pdf/Sample-pdf-5mb.pdf",
+                url = "https://sample-files.com/downloads/documents/pdf/image-doc.pdf",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Pdf_1.pdf",
                 tag = "Document",
@@ -193,21 +193,21 @@ class MainFragment : Fragment() {
         fragmentMainBinding.bt6.text = "Multiple"
         fragmentMainBinding.bt6.setOnClickListener {
             ketch.download(
-                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                url = "https://download.blender.org/peach/bigbuckbunny_movies/big_buck_bunny_720p_h264.mov",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_1.mp4",
                 tag = "Video",
                 metaData = "158"
             )
             ketch.download(
-                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                url = "https://archive.org/download/ElephantsDream/ed_1024.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_2.mp4",
                 tag = "Video",
                 metaData = "169"
             )
             ketch.download(
-                url = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/SubaruOutbackOnStreetAndDirt.mp4",
+                url = "https://archive.org/download/subaru-outback-on-street-and-dirt/SubaruOutbackOnStreetAndDirt.mp4",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Video_3.mp4",
                 tag = "Video",
@@ -228,7 +228,7 @@ class MainFragment : Fragment() {
                 metaData = "1"
             )
             ketch.download(
-                url = "https://sample-videos.com/pdf/Sample-pdf-5mb.pdf",
+                url = "https://sample-files.com/downloads/documents/pdf/image-doc.pdf",
                 path = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path,
                 fileName = "Sample_Pdf_1.pdf",
                 tag = "Document",

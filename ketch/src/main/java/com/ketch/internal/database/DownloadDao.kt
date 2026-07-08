@@ -15,8 +15,14 @@ internal interface DownloadDao {
     @Update
     suspend fun update(entity: DownloadEntity)
 
+    @Query("SELECT * FROM downloads WHERE url = :url AND path = :path")
+    suspend fun findByUrlAndPath(url: String, path: String): DownloadEntity?
+
     @Query("SELECT * FROM downloads WHERE id = :id")
     suspend fun find(id: Int): DownloadEntity?
+
+    @Query("SELECT COUNT(*) FROM downloads WHERE url = :url AND path = :path AND id != :id AND status IN (:activeStatuses)")
+    suspend fun countOtherActiveOrSuccessful(url: String, path: String, id: Int, activeStatuses: List<String>): Int
 
     @Query("DELETE FROM downloads WHERE id = :id")
     suspend fun remove(id: Int)
